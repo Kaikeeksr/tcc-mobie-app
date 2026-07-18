@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths } from 'date-fns';
+import { useState } from 'react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   ChevronLeft, 

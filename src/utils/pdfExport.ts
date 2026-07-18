@@ -1,8 +1,12 @@
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import autoTable, { type Table } from 'jspdf-autotable';
+
+/** O autotable injeta `lastAutoTable` no documento, mas nao declara o tipo. */
+type DocWithAutoTable = jsPDF & { lastAutoTable?: Table };
 import { TurmaReport } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { FREQUENCIA_ADEQUADA, FREQUENCIA_ATENCAO } from '@/lib/frequency';
 
 export const exportTurmaPDF = (report: TurmaReport) => {
   const doc = new jsPDF();
@@ -104,7 +108,7 @@ export const exportTurmaPDF = (report: TurmaReport) => {
   });
 
   // === FOOTER ===
-  const finalY = (doc as any).lastAutoTable.finalY || 200;
+  const finalY = (doc as DocWithAutoTable).lastAutoTable?.finalY ?? 200;
   
   doc.setDrawColor(226, 232, 240);
   doc.setLineWidth(0.5);
@@ -119,7 +123,13 @@ export const exportTurmaPDF = (report: TurmaReport) => {
   // === LEGEND ===
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
-  doc.text('Legenda: Frequência ≥ 80% = Adequada | 60-79% = Atenção | < 60% = Crítica', 14, finalY + 30);
+  doc.text(
+    `Legenda: Frequência ≥ ${FREQUENCIA_ADEQUADA}% = Adequada | ` +
+      `${FREQUENCIA_ATENCAO}-${FREQUENCIA_ADEQUADA - 1}% = Atenção | ` +
+      `< ${FREQUENCIA_ATENCAO}% = Crítica`,
+    14,
+    finalY + 30
+  );
 
   // Save file
   const fileName = `relatorio_${report.turmaNome.toLowerCase().replace(/\s+/g, '_')}_${format(currentDate, 'MM_yyyy')}.pdf`;

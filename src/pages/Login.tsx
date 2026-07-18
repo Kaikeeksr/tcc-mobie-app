@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,9 +16,6 @@ const Login = () => {
   
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const from = location.state?.from?.pathname || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +31,7 @@ const Login = () => {
       } else {
         setError('Email ou senha inválidos');
       }
-    } catch (err) {
+    } catch {
       setError('Erro ao realizar login. Tente novamente.');
     } finally {
       setIsLoading(false);

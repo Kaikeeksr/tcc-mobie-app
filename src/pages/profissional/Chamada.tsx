@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   ClipboardCheck, 
   Calendar as CalendarIcon,
-  AlertTriangle,
   Check,
   X,
   Save,
@@ -14,7 +13,6 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Select,
@@ -188,7 +186,7 @@ const Chamada = () => {
                   mode="single"
                   selected={selectedDate}
                   onSelect={(date) => date && setSelectedDate(date)}
-                  initialFocus
+                  autoFocus
                   className="pointer-events-auto"
                 />
               </PopoverContent>

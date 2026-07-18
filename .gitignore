@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Artefatos de alternate data stream do Windows.
+# Sem os dois-pontos de proposito: o indice do git grava o nome com ":" ASCII
+# e o disco NTFS usa U+F03A, entao o padrao precisa casar as duas grafias.
+*Zone.Identifier

@@ -1,36 +1,21 @@
-import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Users, 
-  BookOpen, 
+import {
+  Users,
+  BookOpen,
   TrendingUp,
   GraduationCap
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { reportService, turmaService } from '@/services/mockService';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { reportService } from '@/services/mockService';
 import { cn } from '@/lib/utils';
+import { getFrequencyColor, getFrequencyBadgeClass } from '@/lib/frequency';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 const ResponsavelDashboard = () => {
   const { user } = useAuth();
   const childrenAttendance = reportService.getChildAttendance(user?.id || '');
-
-  const getFrequencyColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-success';
-    if (percentage >= 60) return 'text-warning';
-    return 'text-danger';
-  };
-
-  const getFrequencyBadge = (percentage: number) => {
-    if (percentage >= 80) return 'bg-success-light text-success border-success/30';
-    if (percentage >= 60) return 'bg-warning-light text-warning border-warning/30';
-    return 'bg-danger-light text-danger border-danger/30';
-  };
 
   const totalChildren = childrenAttendance.length;
   const totalTurmas = childrenAttendance.reduce((sum, child) => sum + child.turmas.length, 0);
@@ -166,7 +151,7 @@ const ResponsavelDashboard = () => {
                         </div>
                         <Badge 
                           variant="outline"
-                          className={cn("flex-shrink-0 text-xs", getFrequencyBadge(turma.percentualFrequencia))}
+                          className={cn("flex-shrink-0 text-xs", getFrequencyBadgeClass(turma.percentualFrequencia))}
                         >
                           {turma.percentualFrequencia}%
                         </Badge>

@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink as RouterNavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   Users, 
@@ -15,10 +15,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-interface LayoutProps {
-  children: React.ReactNode;
-}
 
 const professionalLinks = [
   { to: '/profissional', icon: Home, label: 'Dashboard' },
@@ -38,10 +34,10 @@ const studentLinks = [
   { to: '/aluno', icon: Home, label: 'Minha Frequência' },
 ];
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout = () => {
   const { user, logout, isProfissional, isAluno } = useAuth();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const links = isProfissional ? professionalLinks : isAluno ? studentLinks : parentLinks;
   
@@ -158,7 +154,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           <div className="px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 max-w-7xl mx-auto w-full">
-            {children}
+            <Outlet />
           </div>
         </main>
       </div>
