@@ -1,33 +1,20 @@
-import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Users, 
-  BookOpen, 
+import {
+  Users,
+  BookOpen,
   ChevronRight,
   GraduationCap
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { reportService } from '@/services/mockService';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { getFrequencyBadgeClass } from '@/lib/frequency';
 
 const Filhos = () => {
   const { user } = useAuth();
   const childrenAttendance = reportService.getChildAttendance(user?.id || '');
-
-  const getFrequencyColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-success';
-    if (percentage >= 60) return 'text-warning';
-    return 'text-danger';
-  };
-
-  const getFrequencyBadge = (percentage: number) => {
-    if (percentage >= 80) return 'bg-success-light text-success border-success/30';
-    if (percentage >= 60) return 'bg-warning-light text-warning border-warning/30';
-    return 'bg-danger-light text-danger border-danger/30';
-  };
 
   const getAverageFrequency = (turmas: { percentualFrequencia: number }[]) => {
     if (turmas.length === 0) return 0;
@@ -80,7 +67,7 @@ const Filhos = () => {
                           </span>
                           <Badge 
                             variant="outline"
-                            className={cn("text-xs", getFrequencyBadge(averageFreq))}
+                            className={cn("text-xs", getFrequencyBadgeClass(averageFreq))}
                           >
                             {averageFreq}%
                           </Badge>

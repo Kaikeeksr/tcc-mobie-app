@@ -17,13 +17,12 @@ import {
   mockCalendarDays, 
   mockChamadas 
 } from '@/data/mockData';
-import { format } from 'date-fns';
 
 // In-memory state for mutations
 let students = [...mockStudents];
 let turmas = [...mockTurmas];
-let calendarDays = [...mockCalendarDays];
-let chamadas = [...mockChamadas];
+const calendarDays = [...mockCalendarDays];
+const chamadas = [...mockChamadas];
 
 // Auth Service
 export const authService = {
@@ -31,8 +30,6 @@ export const authService = {
     const user = mockUsers.find(u => u.email === email);
     return user || null;
   },
-  
-  getUsers: (): User[] => mockUsers,
 };
 
 // Turma Service
@@ -137,7 +134,6 @@ export const studentService = {
     const index = students.findIndex(s => s.id === id);
     if (index !== -1) {
       // Remove student from all turmas
-      const student = students[index];
       turmas = turmas.map(t => ({
         ...t,
         alunoIds: t.alunoIds.filter(aid => aid !== id)
@@ -234,17 +230,6 @@ export const chamadaService = {
       return chamadas[index];
     }
     return undefined;
-  },
-  
-  canTakeAttendance: (date: string): { allowed: boolean; reason?: string } => {
-    const holiday = calendarService.getHolidayInfo(date);
-    if (holiday) {
-      return { 
-        allowed: false, 
-        reason: `Chamada indisponível — ${holiday.descricao || 'Feriado'}` 
-      };
-    }
-    return { allowed: true };
   },
 };
 
@@ -370,12 +355,4 @@ export const reportService = {
     if (!student) return null;
     return reportService.getStudentAttendance(student);
   },
-};
-
-// Reset data (for testing)
-export const resetMockData = () => {
-  students = [...mockStudents];
-  turmas = [...mockTurmas];
-  calendarDays = [...mockCalendarDays];
-  chamadas = [...mockChamadas];
 };

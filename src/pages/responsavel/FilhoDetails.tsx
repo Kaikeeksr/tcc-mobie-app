@@ -1,4 +1,3 @@
-import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
@@ -13,7 +12,6 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import {
   Accordion,
@@ -23,6 +21,7 @@ import {
 } from '@/components/ui/accordion';
 import { reportService } from '@/services/mockService';
 import { cn } from '@/lib/utils';
+import { getFrequencyColor, getFrequencyBadgeClass } from '@/lib/frequency';
 
 const FilhoDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -31,18 +30,6 @@ const FilhoDetails = () => {
   
   const childrenAttendance = reportService.getChildAttendance(user?.id || '');
   const child = childrenAttendance.find(c => c.alunoId === id);
-
-  const getFrequencyColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-success';
-    if (percentage >= 60) return 'text-warning';
-    return 'text-danger';
-  };
-
-  const getFrequencyBadge = (percentage: number) => {
-    if (percentage >= 80) return 'bg-success-light text-success border-success/30';
-    if (percentage >= 60) return 'bg-warning-light text-warning border-warning/30';
-    return 'bg-danger-light text-danger border-danger/30';
-  };
 
   if (!child) {
     return (
@@ -169,7 +156,7 @@ const FilhoDetails = () => {
                       </div>
                       <Badge 
                         variant="outline"
-                        className={cn("flex-shrink-0 text-xs", getFrequencyBadge(turma.percentualFrequencia))}
+                        className={cn("flex-shrink-0 text-xs", getFrequencyBadgeClass(turma.percentualFrequencia))}
                       >
                         {turma.percentualFrequencia}%
                       </Badge>

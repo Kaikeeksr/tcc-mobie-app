@@ -1,11 +1,9 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/sonner";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
+import { ROLE_HOME } from "@/lib/roles";
 
 // Pages
 import Login from "@/pages/Login";
@@ -28,112 +26,54 @@ import FilhoDetails from "@/pages/responsavel/FilhoDetails";
 // Aluno Pages
 import AlunoDashboard from "@/pages/aluno/Dashboard";
 
-const queryClient = new QueryClient();
-
 const HomeRedirect = () => {
-  const { isAuthenticated, isProfissional, isResponsavel, isAluno } = useAuth();
-  
-  if (!isAuthenticated) {
+  const { isAuthenticated, user } = useAuth();
+
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
-  
-  if (isProfissional) {
-    return <Navigate to="/profissional" replace />;
-  }
-  
-  if (isResponsavel) {
-    return <Navigate to="/responsavel" replace />;
-  }
-  
-  if (isAluno) {
-    return <Navigate to="/aluno" replace />;
-  }
-  
-  return <Navigate to="/login" replace />;
+
+  return <Navigate to={ROLE_HOME[user.tipoUsuario] ?? "/login"} replace />;
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            
-            {/* Home Redirect */}
-            <Route path="/" element={<HomeRedirect />} />
-            
-            {/* Profissional Routes */}
-            <Route path="/profissional" element={
-              <ProtectedRoute allowedTypes={['PROFISSIONAL']}>
-                <Layout><ProfessionalDashboard /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/profissional/turmas" element={
-              <ProtectedRoute allowedTypes={['PROFISSIONAL']}>
-                <Layout><Turmas /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/profissional/turmas/:id" element={
-              <ProtectedRoute allowedTypes={['PROFISSIONAL']}>
-                <Layout><TurmaDetails /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/profissional/alunos" element={
-              <ProtectedRoute allowedTypes={['PROFISSIONAL']}>
-                <Layout><Alunos /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/profissional/calendario" element={
-              <ProtectedRoute allowedTypes={['PROFISSIONAL']}>
-                <Layout><Calendario /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/profissional/chamada" element={
-              <ProtectedRoute allowedTypes={['PROFISSIONAL']}>
-                <Layout><Chamada /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/profissional/relatorios" element={
-              <ProtectedRoute allowedTypes={['PROFISSIONAL']}>
-                <Layout><Relatorios /></Layout>
-              </ProtectedRoute>
-            } />
-            
-            {/* Responsavel Routes */}
-            <Route path="/responsavel" element={
-              <ProtectedRoute allowedTypes={['RESPONSAVEL']}>
-                <Layout><ResponsavelDashboard /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/responsavel/filhos" element={
-              <ProtectedRoute allowedTypes={['RESPONSAVEL']}>
-                <Layout><Filhos /></Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/responsavel/filhos/:id" element={
-              <ProtectedRoute allowedTypes={['RESPONSAVEL']}>
-                <Layout><FilhoDetails /></Layout>
-              </ProtectedRoute>
-            } />
-            
-            {/* Aluno Routes */}
-            <Route path="/aluno" element={
-              <ProtectedRoute allowedTypes={['ALUNO']}>
-                <Layout><AlunoDashboard /></Layout>
-              </ProtectedRoute>
-            } />
-            
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <AuthProvider>
+    <Toaster />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<HomeRedirect />} />
+
+        <Route element={<ProtectedRoute allowedTypes={["PROFISSIONAL"]} />}>
+          <Route path="/profissional" element={<Layout />}>
+            <Route index element={<ProfessionalDashboard />} />
+            <Route path="turmas" element={<Turmas />} />
+            <Route path="turmas/:id" element={<TurmaDetails />} />
+            <Route path="alunos" element={<Alunos />} />
+            <Route path="calendario" element={<Calendario />} />
+            <Route path="chamada" element={<Chamada />} />
+            <Route path="relatorios" element={<Relatorios />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute allowedTypes={["RESPONSAVEL"]} />}>
+          <Route path="/responsavel" element={<Layout />}>
+            <Route index element={<ResponsavelDashboard />} />
+            <Route path="filhos" element={<Filhos />} />
+            <Route path="filhos/:id" element={<FilhoDetails />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute allowedTypes={["ALUNO"]} />}>
+          <Route path="/aluno" element={<Layout />}>
+            <Route index element={<AlunoDashboard />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  </AuthProvider>
 );
 
 export default App;

@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   BarChart3, 
   Users, 
   TrendingUp, 
-  TrendingDown,
   BookOpen,
   ClipboardCheck,
   ChevronDown,
@@ -27,8 +26,9 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { turmaService, reportService } from '@/services/mockService';
-import { TurmaReport, GeneralReport } from '@/types';
+import { TurmaReport } from '@/types';
 import { cn } from '@/lib/utils';
+import { getFrequencyColor, getFrequencyBadgeClass } from '@/lib/frequency';
 import { exportTurmaPDF } from '@/utils/pdfExport';
 import { toast } from 'sonner';
 
@@ -54,23 +54,11 @@ const Relatorios = () => {
     });
   };
 
-  const getFrequencyColor = (percentage: number) => {
-    if (percentage >= 80) return 'text-success';
-    if (percentage >= 60) return 'text-warning';
-    return 'text-danger';
-  };
-
-  const getFrequencyBadge = (percentage: number) => {
-    if (percentage >= 80) return 'bg-success-light text-success border-success/30';
-    if (percentage >= 60) return 'bg-warning-light text-warning border-warning/30';
-    return 'bg-danger-light text-danger border-danger/30';
-  };
-
   const handleExportPDF = (report: TurmaReport) => {
     try {
       exportTurmaPDF(report);
       toast.success('PDF exportado com sucesso!');
-    } catch (error) {
+    } catch {
       toast.error('Erro ao exportar PDF');
     }
   };
@@ -219,7 +207,7 @@ const Relatorios = () => {
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <Badge 
                           variant="outline" 
-                          className={cn("text-xs hidden sm:inline-flex", getFrequencyBadge(turma.frequenciaMedia))}
+                          className={cn("text-xs hidden sm:inline-flex", getFrequencyBadgeClass(turma.frequenciaMedia))}
                         >
                           {turma.frequenciaMedia}%
                         </Badge>

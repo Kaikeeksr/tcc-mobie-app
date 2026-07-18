@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { reportService } from '@/services/mockService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +14,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getFrequencyColor, getFrequencyVariant } from '@/lib/frequency';
 
 const AlunoDashboard = () => {
   const { user } = useAuth();
@@ -46,18 +46,6 @@ const AlunoDashboard = () => {
   const frequenciaGeral = totalAulas > 0 
     ? Math.round((totalPresencas / totalAulas) * 100) 
     : 0;
-
-  const getFrequencyColor = (freq: number) => {
-    if (freq >= 80) return 'text-success';
-    if (freq >= 60) return 'text-warning';
-    return 'text-danger';
-  };
-
-  const getFrequencyBadge = (freq: number) => {
-    if (freq >= 80) return 'success';
-    if (freq >= 60) return 'warning';
-    return 'danger';
-  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -142,7 +130,7 @@ const AlunoDashboard = () => {
                     {turma.totalAulas} aula{turma.totalAulas !== 1 ? 's' : ''} registrada{turma.totalAulas !== 1 ? 's' : ''}
                   </CardDescription>
                 </div>
-                <Badge variant={getFrequencyBadge(turma.percentualFrequencia) as "success" | "warning" | "danger"} className="flex-shrink-0 text-xs">
+                <Badge variant={getFrequencyVariant(turma.percentualFrequencia)} className="flex-shrink-0 text-xs">
                   {turma.percentualFrequencia}%
                 </Badge>
               </div>

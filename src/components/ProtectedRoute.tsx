@@ -1,17 +1,13 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { ROLE_HOME } from '@/lib/roles';
 import { UserType } from '@/types';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
   allowedTypes?: UserType[];
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  allowedTypes 
-}) => {
+export const ProtectedRoute = ({ allowedTypes }: ProtectedRouteProps) => {
   const { isAuthenticated, user } = useAuth();
   const location = useLocation();
 
@@ -20,13 +16,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (allowedTypes && user && !allowedTypes.includes(user.tipoUsuario)) {
-    // Redirect to appropriate dashboard based on user type
-    let redirectPath = '/login';
-    if (user.tipoUsuario === 'PROFISSIONAL') redirectPath = '/profissional';
-    else if (user.tipoUsuario === 'RESPONSAVEL') redirectPath = '/responsavel';
-    else if (user.tipoUsuario === 'ALUNO') redirectPath = '/aluno';
-    return <Navigate to={redirectPath} replace />;
+    return <Navigate to={ROLE_HOME[user.tipoUsuario] ?? '/login'} replace />;
   }
 
-  return <>{children}</>;
+  return <Outlet />;
 };
