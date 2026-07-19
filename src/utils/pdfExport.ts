@@ -1,14 +1,46 @@
 import jsPDF from 'jspdf';
 import autoTable, { type Table } from 'jspdf-autotable';
-
-/** O autotable injeta `lastAutoTable` no documento, mas nao declara o tipo. */
-type DocWithAutoTable = jsPDF & { lastAutoTable?: Table };
+import { Capacitor } from '@capacitor/core';
+import { Directory, Filesystem } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { TurmaReport } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FREQUENCIA_ADEQUADA, FREQUENCIA_ATENCAO } from '@/lib/frequency';
 
-export const exportTurmaPDF = (report: TurmaReport) => {
+/** O autotable injeta `lastAutoTable` no documento, mas nao declara o tipo. */
+type DocWithAutoTable = jsPDF & { lastAutoTable?: Table };
+
+/**
+ * Entrega o PDF pronto ao usuario.
+ *
+ * Na web, `doc.save()` dispara o download do navegador. Dentro do WebView isso
+ * falharia em silencio: o save monta uma ancora com `blob:` e clica nela, e o
+ * WebView do Android nao tem gerenciador de download nem resolve esse blob.
+ * No nativo, entao, gravamos o arquivo e abrimos a folha de compartilhamento.
+ */
+const deliverPDF = async (doc: jsPDF, fileName: string) => {
+  if (!Capacitor.isNativePlatform()) {
+    doc.save(fileName);
+    return;
+  }
+
+  // `datauristring` volta como "data:application/pdf;filename=...;base64,XXXX".
+  const base64 = doc.output('datauristring').split(',')[1];
+  const { uri } = await Filesystem.writeFile({
+    path: fileName,
+    data: base64,
+    directory: Directory.Cache,
+  });
+
+  await Share.share({
+    title: 'Relatório de frequência',
+    text: fileName,
+    url: uri,
+  });
+};
+
+export const exportTurmaPDF = async (report: TurmaReport) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   
@@ -133,5 +165,5 @@ export const exportTurmaPDF = (report: TurmaReport) => {
 
   // Save file
   const fileName = `relatorio_${report.turmaNome.toLowerCase().replace(/\s+/g, '_')}_${format(currentDate, 'MM_yyyy')}.pdf`;
-  doc.save(fileName);
+  await deliverPDF(doc, fileName);
 };

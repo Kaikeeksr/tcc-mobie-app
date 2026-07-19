@@ -59,10 +59,11 @@ const ProfessionalDashboard = () => {
     <div className="space-y-6 sm:space-y-8 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
+        {/* No celular a saudacao ja e o titulo grande do Layout. */}
+        <h1 className="hidden lg:block text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
           Olá, {user?.nome.split(' ')[0]}! 👋
         </h1>
-        <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+        <p className="text-muted-foreground lg:mt-1 text-sm sm:text-base">
           {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
         </p>
       </div>
@@ -71,13 +72,21 @@ const ProfessionalDashboard = () => {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {stats.map((stat) => (
           <Link key={stat.title} to={stat.link}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-              <CardContent className="p-3 sm:p-4 lg:p-6">
-                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg ${stat.color} flex items-center justify-center mb-2 sm:mb-3`}>
-                  <stat.icon className="w-4 h-4 sm:w-5 sm:h-5" />
+            {/* Icone ao lado do numero, e nao acima: corta quase metade da altura
+                do bloco de indicadores, que no celular competia com o conteudo. */}
+            <Card className="h-full transition-transform active:scale-[0.98] lg:transition-shadow lg:hover:shadow-md">
+              <CardContent className="flex items-center gap-3 p-3 sm:p-4 lg:flex-col lg:items-start lg:gap-0 lg:p-6">
+                <div
+                  className={`w-10 h-10 rounded-lg ${stat.color} flex flex-shrink-0 items-center justify-center lg:mb-3`}
+                >
+                  <stat.icon className="w-5 h-5" />
                 </div>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold">{stat.value}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">{stat.title}</p>
+                <div className="min-w-0">
+                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight">{stat.value}</p>
+                  {/* Quebra em duas linhas em vez de truncar: "Chamadas Hoje" nao
+                      cabe em uma linha ao lado do icone numa tela de 320px. */}
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-tight">{stat.title}</p>
+                </div>
               </CardContent>
             </Card>
           </Link>

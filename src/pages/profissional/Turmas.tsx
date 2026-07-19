@@ -118,7 +118,8 @@ const Turmas = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold">Turmas</h1>
+          {/* No celular o titulo ja vem no cabecalho fixo do Layout. */}
+          <h1 className="hidden lg:block text-2xl lg:text-3xl font-bold">Turmas</h1>
           <p className="text-muted-foreground">Gerencie suas turmas e alunos</p>
         </div>
         <Button onClick={() => handleOpenDialog()} className="gradient-primary">

@@ -1,3 +1,4 @@
+import { lazy } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -5,29 +6,33 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import { ROLE_HOME } from "@/lib/roles";
 
-// Pages
+// Login e NotFound ficam no bundle inicial: sao as duas telas que podem
+// aparecer antes de qualquer navegacao.
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 
-// Profissional Pages
-import ProfessionalDashboard from "@/pages/profissional/Dashboard";
-import Turmas from "@/pages/profissional/Turmas";
-import TurmaDetails from "@/pages/profissional/TurmaDetails";
-import Alunos from "@/pages/profissional/Alunos";
-import Calendario from "@/pages/profissional/Calendario";
-import Chamada from "@/pages/profissional/Chamada";
-import Relatorios from "@/pages/profissional/Relatorios";
+// As demais viram chunks proprios — cada perfil so baixa e interpreta as telas
+// que usa, em vez de um bundle unico com o app inteiro.
+const ProfessionalDashboard = lazy(() => import("@/pages/profissional/Dashboard"));
+const Turmas = lazy(() => import("@/pages/profissional/Turmas"));
+const TurmaDetails = lazy(() => import("@/pages/profissional/TurmaDetails"));
+const Alunos = lazy(() => import("@/pages/profissional/Alunos"));
+const Calendario = lazy(() => import("@/pages/profissional/Calendario"));
+const Chamada = lazy(() => import("@/pages/profissional/Chamada"));
+const Relatorios = lazy(() => import("@/pages/profissional/Relatorios"));
 
-// Responsavel Pages
-import ResponsavelDashboard from "@/pages/responsavel/Dashboard";
-import Filhos from "@/pages/responsavel/Filhos";
-import FilhoDetails from "@/pages/responsavel/FilhoDetails";
+const ResponsavelDashboard = lazy(() => import("@/pages/responsavel/Dashboard"));
+const Filhos = lazy(() => import("@/pages/responsavel/Filhos"));
+const FilhoDetails = lazy(() => import("@/pages/responsavel/FilhoDetails"));
 
-// Aluno Pages
-import AlunoDashboard from "@/pages/aluno/Dashboard";
+const AlunoDashboard = lazy(() => import("@/pages/aluno/Dashboard"));
 
 const HomeRedirect = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
@@ -38,6 +43,8 @@ const HomeRedirect = () => {
 
 const App = () => (
   <AuthProvider>
+    {/* O posicionamento vem do CSS (ver index.css): a prop `offset` do sonner
+        1.7 concatena "px" no valor e nao aceita calc(). */}
     <Toaster />
     <BrowserRouter>
       <Routes>

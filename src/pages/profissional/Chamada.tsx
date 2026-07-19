@@ -32,6 +32,7 @@ import { AttendanceRecord, AttendanceStatus, Turma, Student } from '@/types';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import { hapticSelecao, hapticSucesso } from '@/lib/haptics';
 
 const Chamada = () => {
   const { user } = useAuth();
@@ -86,6 +87,7 @@ const Chamada = () => {
   }, [selectedTurmaId, selectedDate]);
 
   const handleAttendanceChange = (studentId: string, status: AttendanceStatus) => {
+    void hapticSelecao();
     setAttendance(prev => {
       const newMap = new Map(prev);
       newMap.set(studentId, status);
@@ -120,6 +122,7 @@ const Chamada = () => {
       chamadaService.create(selectedTurmaId, dateStr, registros, user.id);
       toast.success('Chamada salva com sucesso!');
     }
+    void hapticSucesso();
 
     const newChamada = chamadaService.getByTurmaAndDate(selectedTurmaId, dateStr);
     if (newChamada) {
@@ -135,7 +138,8 @@ const Chamada = () => {
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-2xl lg:text-3xl font-bold">Chamada</h1>
+        {/* No celular o titulo ja vem no cabecalho fixo do Layout. */}
+        <h1 className="hidden lg:block text-2xl lg:text-3xl font-bold">Chamada</h1>
         <p className="text-muted-foreground">Registre a presença dos alunos</p>
       </div>
 
@@ -288,25 +292,29 @@ const Chamada = () => {
                           </div>
                           <span className="font-medium text-sm sm:text-base truncate">{student.nome}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                        {/* 44px e o minimo do iOS HIG. Esta e a interacao central
+                            do app: motorista marcando aluno por aluno, uma mao so. */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <Button
                             size="sm"
                             variant={isPresent ? "default" : "outline"}
+                            aria-label={`Marcar ${student.nome} como presente`}
                             className={cn(
-                              "h-8 w-8 sm:h-9 sm:w-9 p-0",
+                              "h-11 w-11 p-0",
                               isPresent && "bg-success hover:bg-success/90"
                             )}
                             onClick={() => handleAttendanceChange(student.id, 'PRESENTE')}
                           >
-                            <Check className="w-4 h-4" />
+                            <Check className="w-5 h-5" />
                           </Button>
                           <Button
                             size="sm"
                             variant={!isPresent ? "destructive" : "outline"}
-                            className="h-8 w-8 sm:h-9 sm:w-9 p-0"
+                            aria-label={`Marcar ${student.nome} como falta`}
+                            className="h-11 w-11 p-0"
                             onClick={() => handleAttendanceChange(student.id, 'FALTA')}
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-5 h-5" />
                           </Button>
                         </div>
                       </div>

@@ -54,11 +54,12 @@ const Relatorios = () => {
     });
   };
 
-  const handleExportPDF = (report: TurmaReport) => {
+  const handleExportPDF = async (report: TurmaReport) => {
     try {
-      exportTurmaPDF(report);
+      await exportTurmaPDF(report);
       toast.success('PDF exportado com sucesso!');
-    } catch {
+    } catch (erro) {
+      console.error('Falha ao exportar PDF', erro);
       toast.error('Erro ao exportar PDF');
     }
   };
@@ -68,7 +69,8 @@ const Relatorios = () => {
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold">Relatórios</h1>
+          {/* No celular o titulo ja vem no cabecalho fixo do Layout. */}
+          <h1 className="hidden lg:block text-2xl lg:text-3xl font-bold">Relatórios</h1>
           <p className="text-muted-foreground">Análise de frequência e presença</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">

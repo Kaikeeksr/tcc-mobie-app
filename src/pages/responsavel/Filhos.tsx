@@ -27,7 +27,8 @@ const Filhos = () => {
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-2xl lg:text-3xl font-bold">Meus Filhos</h1>
+        {/* No celular o titulo ja vem no cabecalho fixo do Layout. */}
+        <h1 className="hidden lg:block text-2xl lg:text-3xl font-bold">Meus Filhos</h1>
         <p className="text-muted-foreground text-sm">Acompanhe a frequência e histórico</p>
       </div>
 

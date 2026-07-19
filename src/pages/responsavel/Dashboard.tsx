@@ -34,10 +34,11 @@ const ResponsavelDashboard = () => {
     <div className="space-y-6 sm:space-y-8 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
+        {/* No celular a saudacao ja e o titulo grande do Layout. */}
+        <h1 className="hidden lg:block text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
           Olá, {user?.nome.split(' ')[0]}! 👋
         </h1>
-        <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+        <p className="text-muted-foreground lg:mt-1 text-sm sm:text-base">
           Acompanhe a frequência dos seus filhos
         </p>
       </div>

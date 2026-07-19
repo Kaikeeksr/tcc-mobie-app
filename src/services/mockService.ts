@@ -17,12 +17,59 @@ import {
   mockCalendarDays, 
   mockChamadas 
 } from '@/data/mockData';
+import { storage } from '@/lib/storage';
 
 // In-memory state for mutations
 let students = [...mockStudents];
 let turmas = [...mockTurmas];
 const calendarDays = [...mockCalendarDays];
 const chamadas = [...mockChamadas];
+
+const STORE_KEY = 'dados.app';
+
+interface PersistedStore {
+  students: Student[];
+  turmas: Turma[];
+  calendarDays: CalendarDay[];
+  chamadas: Chamada[];
+}
+
+/**
+ * Grava o estado atual. Fire-and-forget de proposito: os services sao sincronos
+ * porque as paginas os chamam durante o render, e nenhuma tela espera a escrita.
+ */
+const persist = (): void => {
+  void storage.set(STORE_KEY, { students, turmas, calendarDays, chamadas });
+};
+
+/**
+ * Carrega o estado gravado para dentro dos arrays em memoria.
+ *
+ * Precisa terminar antes do primeiro render (ver `main.tsx`): sem isso, uma
+ * chamada registrada pelo motorista some quando o Android encerra o app em
+ * segundo plano.
+ */
+export const hydrateStore = async (): Promise<void> => {
+  const saved = await storage.get<PersistedStore>(STORE_KEY);
+  if (!saved) return;
+
+  // O JSON devolve datas como string, mas os tipos prometem Date.
+  students = saved.students;
+  turmas = saved.turmas.map(t => ({ ...t, criadoEm: new Date(t.criadoEm) }));
+
+  // calendarDays e chamadas sao const: trocamos o conteudo no lugar.
+  calendarDays.length = 0;
+  calendarDays.push(...saved.calendarDays);
+
+  chamadas.length = 0;
+  chamadas.push(
+    ...saved.chamadas.map(c => ({
+      ...c,
+      criadoEm: new Date(c.criadoEm),
+      atualizadoEm: c.atualizadoEm ? new Date(c.atualizadoEm) : undefined,
+    }))
+  );
+};
 
 // Auth Service
 export const authService = {
@@ -46,6 +93,7 @@ export const turmaService = {
       criadoEm: new Date(),
     };
     turmas.push(newTurma);
+    persist();
     return newTurma;
   },
   
@@ -53,6 +101,7 @@ export const turmaService = {
     const index = turmas.findIndex(t => t.id === id);
     if (index !== -1) {
       turmas[index] = { ...turmas[index], ...data };
+      persist();
       return turmas[index];
     }
     return undefined;
@@ -67,6 +116,7 @@ export const turmaService = {
         ...s,
         turmaIds: s.turmaIds.filter(tid => tid !== id)
       }));
+      persist();
       return true;
     }
     return false;
@@ -82,6 +132,7 @@ export const turmaService = {
       if (!student.turmaIds.includes(turmaId)) {
         student.turmaIds.push(turmaId);
       }
+      persist();
       return true;
     }
     return false;
@@ -93,6 +144,7 @@ export const turmaService = {
     if (turma && student) {
       turma.alunoIds = turma.alunoIds.filter(id => id !== studentId);
       student.turmaIds = student.turmaIds.filter(id => id !== turmaId);
+      persist();
       return true;
     }
     return false;
@@ -118,6 +170,7 @@ export const studentService = {
       turmaIds: [],
     };
     students.push(newStudent);
+    persist();
     return newStudent;
   },
   
@@ -125,6 +178,7 @@ export const studentService = {
     const index = students.findIndex(s => s.id === id);
     if (index !== -1) {
       students[index] = { ...students[index], ...data };
+      persist();
       return students[index];
     }
     return undefined;
@@ -139,6 +193,7 @@ export const studentService = {
         alunoIds: t.alunoIds.filter(aid => aid !== id)
       }));
       students.splice(index, 1);
+      persist();
       return true;
     }
     return false;
@@ -180,7 +235,8 @@ export const calendarService = {
     } else if (tipo === 'FERIADO') {
       calendarDays.push(newDay);
     }
-    
+
+    persist();
     return newDay;
   },
   
@@ -188,6 +244,7 @@ export const calendarService = {
     const index = calendarDays.findIndex(d => d.date === date);
     if (index !== -1) {
       calendarDays.splice(index, 1);
+      persist();
       return true;
     }
     return false;
@@ -216,6 +273,7 @@ export const chamadaService = {
       criadoEm: new Date(),
     };
     chamadas.push(newChamada);
+    persist();
     return newChamada;
   },
   
@@ -225,8 +283,9 @@ export const chamadaService = {
       chamadas[index] = { 
         ...chamadas[index], 
         registros, 
-        atualizadoEm: new Date() 
+        atualizadoEm: new Date()
       };
+      persist();
       return chamadas[index];
     }
     return undefined;

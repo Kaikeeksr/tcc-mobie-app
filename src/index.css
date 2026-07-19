@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
+/* A fonte Inter vem do pacote @fontsource, importado em main.tsx.
+   Buscar do Google Fonts deixaria o app dependente de rede no boot. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -133,9 +133,59 @@
     @apply border-border;
   }
 
+  html {
+    /* Tira o flash cinza ao tocar e o atraso de 300ms herdado do duplo-toque. */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+
+    /* Altura da barra de abas, para o toast nao subir em cima dela.
+       Zero no desktop, onde a navegacao e a sidebar. */
+    --altura-abas: 0px;
+  }
+
+  @media (max-width: 1023px) {
+    html {
+      --altura-abas: 3.25rem;
+    }
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, sans-serif;
+    /* Sem o efeito de "esticar" a pagina inteira, que denuncia o navegador. */
+    overscroll-behavior: none;
+  }
+
+  /* Cromagem nao se seleciona com toque longo, como num app nativo. O conteudo
+     das paginas fica de fora: o usuario ainda pode copiar nome, email etc. */
+  button,
+  a,
+  label,
+  nav,
+  header {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Abaixo de 16px o iOS da zoom ao focar o campo e nao volta mais. Restrito ao
+     celular para nao inflar os campos no desktop, onde o design pede 14px. */
+  @media (max-width: 1023px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+}
+
+@layer components {
+  /* Toast acima da barra de abas e da barra de gestos.
+     Mexemos em `bottom` e nao em `--offset`: essa variavel tambem alimenta a
+     animacao de empilhamento, e no celular o sonner posiciona por
+     `--mobile-offset-bottom`. O !important vence o estilo inline do sonner. */
+  [data-sonner-toaster][data-y-position='bottom'] {
+    bottom: calc(var(--altura-abas) + 1rem + env(safe-area-inset-bottom)) !important;
   }
 }
 

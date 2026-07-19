@@ -27,7 +27,8 @@ const AlunoDashboard = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">Minha Frequência</h1>
+          {/* No celular o titulo ja vem no cabecalho fixo do Layout. */}
+          <h1 className="hidden lg:block text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">Minha Frequência</h1>
           <p className="text-muted-foreground mt-1 text-sm">Visualize seu registro de presença</p>
         </div>
         <Card>
@@ -51,8 +52,9 @@ const AlunoDashboard = () => {
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">Olá, {attendance.alunoNome}!</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Acompanhe seu registro de frequência</p>
+        {/* No celular a saudacao ja e o titulo grande do Layout. */}
+        <h1 className="hidden lg:block text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">Olá, {attendance.alunoNome}!</h1>
+        <p className="text-muted-foreground lg:mt-1 text-sm">Acompanhe seu registro de frequência</p>
       </div>
 
       {/* Overview Cards */}

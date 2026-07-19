@@ -131,7 +131,8 @@ const Alunos = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold">Alunos</h1>
+          {/* No celular o titulo ja vem no cabecalho fixo do Layout. */}
+          <h1 className="hidden lg:block text-2xl lg:text-3xl font-bold">Alunos</h1>
           <p className="text-muted-foreground text-sm">Gerencie todos os alunos cadastrados</p>
         </div>
         <Button onClick={() => handleOpenDialog()} className="gradient-primary w-full sm:w-auto">

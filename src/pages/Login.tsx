@@ -8,6 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
+/** Atalhos de login da demonstracao. Os e-mails vivem em src/data/mockData.ts. */
+const CONTAS_DEMO = [
+  { perfil: 'Profissional', email: 'carlos@escola.com' },
+  { perfil: 'Responsável', email: 'maria@email.com' },
+  { perfil: 'Aluno', email: 'pedro@aluno.com' },
+] as const;
+
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -56,7 +63,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-primary/5 p-4">
+    <div className="min-h-dvh flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-primary/5 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
       <div className="w-full max-w-md space-y-6 animate-fade-in">
         {/* Logo and Title */}
         <div className="text-center space-y-2">
@@ -123,34 +130,23 @@ const Login = () => {
               <p className="text-sm text-muted-foreground text-center mb-4">
                 Acesso rápido para demonstração:
               </p>
-              <div className="grid grid-cols-3 gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => loginAs('carlos@escola.com')}
-                  disabled={isLoading}
-                  className="h-auto py-3 flex flex-col items-center gap-1"
-                >
-                  <span className="font-medium text-xs">Profissional</span>
-                  <span className="text-[10px] text-muted-foreground">carlos@escola.com</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => loginAs('maria@email.com')}
-                  disabled={isLoading}
-                  className="h-auto py-3 flex flex-col items-center gap-1"
-                >
-                  <span className="font-medium text-xs">Responsável</span>
-                  <span className="text-[10px] text-muted-foreground">maria@email.com</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => loginAs('pedro@aluno.com')}
-                  disabled={isLoading}
-                  className="h-auto py-3 flex flex-col items-center gap-1"
-                >
-                  <span className="font-medium text-xs">Aluno</span>
-                  <span className="text-[10px] text-muted-foreground">pedro@aluno.com</span>
-                </Button>
+              {/* Uma linha por perfil no celular: em tres colunas sobra menos de
+                  100px por botao e o e-mail vaza. So a partir de sm empilha. */}
+              <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
+                {CONTAS_DEMO.map(conta => (
+                  <Button
+                    key={conta.email}
+                    variant="outline"
+                    onClick={() => loginAs(conta.email)}
+                    disabled={isLoading}
+                    className="h-auto min-w-0 justify-between gap-2 px-3 py-3 sm:flex-col sm:justify-center sm:gap-1"
+                  >
+                    <span className="text-xs font-medium">{conta.perfil}</span>
+                    <span className="min-w-0 truncate text-[11px] font-normal text-muted-foreground">
+                      {conta.email}
+                    </span>
+                  </Button>
+                ))}
               </div>
             </div>
           </CardContent>
