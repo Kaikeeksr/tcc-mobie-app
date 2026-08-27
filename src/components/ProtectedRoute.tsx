@@ -8,8 +8,14 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ allowedTypes }: ProtectedRouteProps) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
+
+  // Sem esta guarda o app sempre abriria no login: a sessao gravada e lida de
+  // forma assincrona e ainda nao chegou no primeiro render.
+  if (isLoading) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;

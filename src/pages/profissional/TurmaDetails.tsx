@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Plus, 
-  Trash2, 
+import {
+  ArrowLeft,
+  Plus,
+  Trash2,
   Users,
   ClipboardCheck,
   Search
@@ -37,27 +37,51 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { turmaService, studentService } from '@/services/mockService';
-import { Student } from '@/types';
+import { turmaApi, studentApi, enrollmentApi, fetchActiveEnrollments, studentsInGroup } from '@/services/api';
+import { Student, Turma } from '@/types';
 import { toast } from 'sonner';
 
 const TurmaDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
-  const turma = turmaService.getById(id || '');
-  const [students, setStudents] = useState<Student[]>(
-    turma ? turmaService.getStudents(turma.id) : []
-  );
-  const allStudents = studentService.getAll();
-  
+
+  const [turma, setTurma] = useState<Turma | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [removingStudent, setRemovingStudent] = useState<Student | null>(null);
 
-  if (!turma) {
+  const load = useCallback(async () => {
+    if (!id) return;
+    setIsLoading(true);
+    try {
+      const [turmaData, allStudentsData] = await Promise.all([turmaApi.getById(id), studentApi.list()]);
+      setTurma(turmaData);
+      setAllStudents(allStudentsData);
+      const enrollments = await fetchActiveEnrollments(allStudentsData);
+      setStudents(studentsInGroup(id, allStudentsData, enrollments));
+    } catch {
+      setNotFound(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (isLoading) {
+    return <p className="text-center text-muted-foreground py-12">Carregando...</p>;
+  }
+
+  if (notFound || !turma) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <h2 className="text-xl font-semibold mb-2">Turma não encontrada</h2>
@@ -72,28 +96,39 @@ const TurmaDetails = () => {
     student.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const availableStudents = allStudents.filter(
-    s => !turma.alunoIds.includes(s.id)
-  );
+  const enrolledIds = new Set(students.map(s => s.id));
+  const availableStudents = allStudents.filter(s => !enrolledIds.has(s.id));
 
-  const handleAddStudent = () => {
-    if (!selectedStudentId) {
+  const handleAddStudent = async () => {
+    if (!selectedStudentId || !id) {
       toast.error('Selecione um aluno');
       return;
     }
 
-    turmaService.addStudent(turma.id, selectedStudentId);
-    setStudents(turmaService.getStudents(turma.id));
-    toast.success('Aluno adicionado com sucesso!');
-    setIsAddDialogOpen(false);
-    setSelectedStudentId('');
+    try {
+      await enrollmentApi.enroll(selectedStudentId, id);
+      toast.success('Aluno adicionado com sucesso!');
+      setIsAddDialogOpen(false);
+      setSelectedStudentId('');
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao adicionar aluno');
+    }
   };
 
-  const handleRemoveStudent = () => {
-    if (removingStudent) {
-      turmaService.removeStudent(turma.id, removingStudent.id);
-      setStudents(turmaService.getStudents(turma.id));
+  const handleRemoveStudent = async () => {
+    if (!removingStudent) return;
+    try {
+      const enrollments = await enrollmentApi.listByStudent(removingStudent.id);
+      const active = enrollments.find(e => e.active && e.transport_group_id === turma.id);
+      if (active) {
+        await enrollmentApi.end(active.id);
+      }
       toast.success('Aluno removido da turma!');
+      await load();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao remover aluno');
+    } finally {
       setIsRemoveDialogOpen(false);
       setRemovingStudent(null);
     }
@@ -106,17 +141,16 @@ const TurmaDetails = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex items-start gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="flex-shrink-0 mt-0.5">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold truncate">{turma.nome}</h1>
-          <p className="text-muted-foreground text-sm truncate">{turma.descricao}</p>
+          {turma.turno && <p className="text-muted-foreground text-sm truncate">Turno: {turma.turno}</p>}
         </div>
       </div>
-      
+
       <Button asChild className="w-full sm:w-auto">
         <Link to={`/profissional/chamada?turma=${turma.id}`}>
           <ClipboardCheck className="w-4 h-4 mr-2" />
@@ -124,7 +158,6 @@ const TurmaDetails = () => {
         </Link>
       </Button>
 
-      {/* Stats */}
       <Card>
         <CardContent className="flex items-center gap-4 p-3 sm:p-4">
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -137,7 +170,6 @@ const TurmaDetails = () => {
         </CardContent>
       </Card>
 
-      {/* Students List */}
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-6">
           <div>
@@ -150,7 +182,6 @@ const TurmaDetails = () => {
           </Button>
         </CardHeader>
         <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-          {/* Search */}
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -163,14 +194,14 @@ const TurmaDetails = () => {
 
           {filteredStudents.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              {searchTerm 
+              {searchTerm
                 ? 'Nenhum aluno encontrado com esse termo'
                 : 'Nenhum aluno nesta turma. Adicione alunos para começar.'}
             </div>
           ) : (
             <div className="space-y-2">
               {filteredStudents.map((student) => (
-                <div 
+                <div
                   key={student.id}
                   className="flex items-center justify-between p-2 sm:p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors gap-2"
                 >
@@ -182,13 +213,13 @@ const TurmaDetails = () => {
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium text-sm sm:text-base truncate">{student.nome}</p>
-                      <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                        Resp: {student.responsavelNome}
-                      </p>
+                      {student.serie && (
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{student.serie}</p>
+                      )}
                     </div>
                   </div>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="icon"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0 h-8 w-8"
                     onClick={() => openRemoveDialog(student)}
@@ -202,7 +233,6 @@ const TurmaDetails = () => {
         </CardContent>
       </Card>
 
-      {/* Add Student Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -243,7 +273,6 @@ const TurmaDetails = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Remove Student Confirmation */}
       <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -255,7 +284,7 @@ const TurmaDetails = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleRemoveStudent}
               className="bg-destructive hover:bg-destructive/90"
             >

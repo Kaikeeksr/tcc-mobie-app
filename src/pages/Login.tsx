@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -23,32 +23,12 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
+      const result = await login(email, password);
+      if (result.ok) {
         toast.success('Login realizado com sucesso!');
-        // Navigate based on user type - the ProtectedRoute will handle redirection
         navigate('/', { replace: true });
       } else {
-        setError('Email ou senha inválidos');
-      }
-    } catch {
-      setError('Erro ao realizar login. Tente novamente.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loginAs = async (userEmail: string) => {
-    setEmail(userEmail);
-    setPassword('123456');
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      const success = await login(userEmail, '123456');
-      if (success) {
-        toast.success('Login realizado com sucesso!');
-        navigate('/', { replace: true });
+        setError(result.message);
       }
     } finally {
       setIsLoading(false);
@@ -56,7 +36,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-primary/5 p-4">
+    <div className="min-h-dvh flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-primary/5 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
       <div className="w-full max-w-md space-y-6 animate-fade-in">
         {/* Logo and Title */}
         <div className="text-center space-y-2">
@@ -109,8 +89,8 @@ const Login = () => {
                 </div>
               )}
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full h-11 gradient-primary hover:opacity-90 transition-opacity"
                 disabled={isLoading}
               >
@@ -118,47 +98,16 @@ const Login = () => {
               </Button>
             </form>
 
-            {/* Quick Login for Demo */}
-            <div className="mt-6 pt-6 border-t">
-              <p className="text-sm text-muted-foreground text-center mb-4">
-                Acesso rápido para demonstração:
+            <div className="mt-6 pt-6 border-t text-center">
+              <p className="text-sm text-muted-foreground">
+                É um transportador e ainda não tem conta?{' '}
+                <Link to="/registro" className="text-primary font-medium hover:underline">
+                  Cadastre-se
+                </Link>
               </p>
-              <div className="grid grid-cols-3 gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => loginAs('carlos@escola.com')}
-                  disabled={isLoading}
-                  className="h-auto py-3 flex flex-col items-center gap-1"
-                >
-                  <span className="font-medium text-xs">Profissional</span>
-                  <span className="text-[10px] text-muted-foreground">carlos@escola.com</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => loginAs('maria@email.com')}
-                  disabled={isLoading}
-                  className="h-auto py-3 flex flex-col items-center gap-1"
-                >
-                  <span className="font-medium text-xs">Responsável</span>
-                  <span className="text-[10px] text-muted-foreground">maria@email.com</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => loginAs('pedro@aluno.com')}
-                  disabled={isLoading}
-                  className="h-auto py-3 flex flex-col items-center gap-1"
-                >
-                  <span className="font-medium text-xs">Aluno</span>
-                  <span className="text-[10px] text-muted-foreground">pedro@aluno.com</span>
-                </Button>
-              </div>
             </div>
           </CardContent>
         </Card>
-
-        <p className="text-center text-sm text-muted-foreground">
-          Dados mockados para demonstração
-        </p>
       </div>
     </div>
   );

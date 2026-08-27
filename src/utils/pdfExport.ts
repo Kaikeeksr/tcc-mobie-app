@@ -1,20 +1,51 @@
 import jsPDF from 'jspdf';
 import autoTable, { type Table } from 'jspdf-autotable';
-
-/** O autotable injeta `lastAutoTable` no documento, mas nao declara o tipo. */
-type DocWithAutoTable = jsPDF & { lastAutoTable?: Table };
+import { Capacitor } from '@capacitor/core';
+import { Directory, Filesystem } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { TurmaReport } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FREQUENCIA_ADEQUADA, FREQUENCIA_ATENCAO } from '@/lib/frequency';
 
-export const exportTurmaPDF = (report: TurmaReport) => {
+/** O autotable injeta `lastAutoTable` no documento, mas nao declara o tipo. */
+type DocWithAutoTable = jsPDF & { lastAutoTable?: Table };
+
+/**
+ * Entrega o PDF pronto ao usuario.
+ *
+ * Na web, `doc.save()` dispara o download do navegador. Dentro do WebView isso
+ * falharia em silencio: o save monta uma ancora com `blob:` e clica nela, e o
+ * WebView do Android nao tem gerenciador de download nem resolve esse blob.
+ * No nativo, entao, gravamos o arquivo e abrimos a folha de compartilhamento.
+ */
+const deliverPDF = async (doc: jsPDF, fileName: string) => {
+  if (!Capacitor.isNativePlatform()) {
+    doc.save(fileName);
+    return;
+  }
+
+  // `datauristring` volta como "data:application/pdf;filename=...;base64,XXXX".
+  const base64 = doc.output('datauristring').split(',')[1];
+  const { uri } = await Filesystem.writeFile({
+    path: fileName,
+    data: base64,
+    directory: Directory.Cache,
+  });
+
+  await Share.share({
+    title: 'Relatório de frequência',
+    text: fileName,
+    url: uri,
+  });
+};
+
+export const exportTurmaPDF = async (report: TurmaReport) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
-  
-  // Get current month/year for monthly report
+
   const currentDate = new Date();
-  const monthYear = format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
+  const periodo = `${format(new Date(report.from + 'T12:00:00'), 'dd/MM/yyyy')} a ${format(new Date(report.to + 'T12:00:00'), 'dd/MM/yyyy')}`;
   const formattedDate = format(currentDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 
   // === FAKE LOGO ===
@@ -52,8 +83,7 @@ export const exportTurmaPDF = (report: TurmaReport) => {
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
-  const capitalizedMonth = monthYear.charAt(0).toUpperCase() + monthYear.slice(1);
-  doc.text(capitalizedMonth, pageWidth / 2, 62, { align: 'center' });
+  doc.text(`Período: ${periodo}`, pageWidth / 2, 62, { align: 'center' });
 
   // === TURMA INFO ===
   doc.setFontSize(11);
@@ -73,33 +103,39 @@ export const exportTurmaPDF = (report: TurmaReport) => {
     aluno.alunoNome,
     aluno.presencas.toString(),
     aluno.faltas.toString(),
+    aluno.atrasos.toString(),
+    aluno.retiradas.toString(),
+    aluno.justificadas.toString(),
     aluno.totalAulas.toString(),
     `${aluno.percentualFrequencia}%`
   ]);
 
   autoTable(doc, {
     startY: 105,
-    head: [['#', 'Nome do Aluno', 'Presenças', 'Faltas', 'Total Aulas', 'Frequência']],
+    head: [['#', 'Nome do Aluno', 'Pres.', 'Faltas', 'Atrasos', 'Retiradas', 'Justif.', 'Total', 'Frequência']],
     body: tableData,
     theme: 'grid',
     headStyles: {
       fillColor: [59, 130, 246],
       textColor: [255, 255, 255],
-      fontSize: 10,
+      fontSize: 9,
       fontStyle: 'bold',
       halign: 'center'
     },
     bodyStyles: {
-      fontSize: 9,
+      fontSize: 8.5,
       textColor: [30, 41, 59]
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 15 },
-      1: { halign: 'left', cellWidth: 60 },
-      2: { halign: 'center', cellWidth: 25 },
-      3: { halign: 'center', cellWidth: 25 },
-      4: { halign: 'center', cellWidth: 25 },
-      5: { halign: 'center', cellWidth: 25 }
+      0: { halign: 'center', cellWidth: 10 },
+      1: { halign: 'left', cellWidth: 48 },
+      2: { halign: 'center', cellWidth: 16 },
+      3: { halign: 'center', cellWidth: 16 },
+      4: { halign: 'center', cellWidth: 16 },
+      5: { halign: 'center', cellWidth: 18 },
+      6: { halign: 'center', cellWidth: 16 },
+      7: { halign: 'center', cellWidth: 16 },
+      8: { halign: 'center', cellWidth: 20 }
     },
     alternateRowStyles: {
       fillColor: [248, 250, 252]
@@ -132,6 +168,6 @@ export const exportTurmaPDF = (report: TurmaReport) => {
   );
 
   // Save file
-  const fileName = `relatorio_${report.turmaNome.toLowerCase().replace(/\s+/g, '_')}_${format(currentDate, 'MM_yyyy')}.pdf`;
-  doc.save(fileName);
+  const fileName = `relatorio_${report.turmaNome.toLowerCase().replace(/\s+/g, '_')}_${report.from}_a_${report.to}.pdf`;
+  await deliverPDF(doc, fileName);
 };
