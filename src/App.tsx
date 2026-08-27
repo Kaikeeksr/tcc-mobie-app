@@ -9,6 +9,7 @@ import { ROLE_HOME } from "@/lib/roles";
 // Login e NotFound ficam no bundle inicial: sao as duas telas que podem
 // aparecer antes de qualquer navegacao.
 import Login from "@/pages/Login";
+import Register from "@/pages/Register";
 import NotFound from "@/pages/NotFound";
 
 // As demais viram chunks proprios — cada perfil so baixa e interpreta as telas
@@ -49,6 +50,7 @@ const App = () => (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/registro" element={<Register />} />
         <Route path="/" element={<HomeRedirect />} />
 
         <Route element={<ProtectedRoute allowedTypes={["PROFISSIONAL"]} />}>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,19 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
-/** Atalhos de login da demonstracao. Os e-mails vivem em src/data/mockData.ts. */
-const CONTAS_DEMO = [
-  { perfil: 'Profissional', email: 'carlos@escola.com' },
-  { perfil: 'Responsável', email: 'maria@email.com' },
-  { perfil: 'Aluno', email: 'pedro@aluno.com' },
-] as const;
-
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -30,32 +23,12 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
+      const result = await login(email, password);
+      if (result.ok) {
         toast.success('Login realizado com sucesso!');
-        // Navigate based on user type - the ProtectedRoute will handle redirection
         navigate('/', { replace: true });
       } else {
-        setError('Email ou senha inválidos');
-      }
-    } catch {
-      setError('Erro ao realizar login. Tente novamente.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loginAs = async (userEmail: string) => {
-    setEmail(userEmail);
-    setPassword('123456');
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      const success = await login(userEmail, '123456');
-      if (success) {
-        toast.success('Login realizado com sucesso!');
-        navigate('/', { replace: true });
+        setError(result.message);
       }
     } finally {
       setIsLoading(false);
@@ -116,8 +89,8 @@ const Login = () => {
                 </div>
               )}
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full h-11 gradient-primary hover:opacity-90 transition-opacity"
                 disabled={isLoading}
               >
@@ -125,36 +98,16 @@ const Login = () => {
               </Button>
             </form>
 
-            {/* Quick Login for Demo */}
-            <div className="mt-6 pt-6 border-t">
-              <p className="text-sm text-muted-foreground text-center mb-4">
-                Acesso rápido para demonstração:
+            <div className="mt-6 pt-6 border-t text-center">
+              <p className="text-sm text-muted-foreground">
+                É um transportador e ainda não tem conta?{' '}
+                <Link to="/registro" className="text-primary font-medium hover:underline">
+                  Cadastre-se
+                </Link>
               </p>
-              {/* Uma linha por perfil no celular: em tres colunas sobra menos de
-                  100px por botao e o e-mail vaza. So a partir de sm empilha. */}
-              <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
-                {CONTAS_DEMO.map(conta => (
-                  <Button
-                    key={conta.email}
-                    variant="outline"
-                    onClick={() => loginAs(conta.email)}
-                    disabled={isLoading}
-                    className="h-auto min-w-0 justify-between gap-2 px-3 py-3 sm:flex-col sm:justify-center sm:gap-1"
-                  >
-                    <span className="text-xs font-medium">{conta.perfil}</span>
-                    <span className="min-w-0 truncate text-[11px] font-normal text-muted-foreground">
-                      {conta.email}
-                    </span>
-                  </Button>
-                ))}
-              </div>
             </div>
           </CardContent>
         </Card>
-
-        <p className="text-center text-sm text-muted-foreground">
-          Dados mockados para demonstração
-        </p>
       </div>
     </div>
   );

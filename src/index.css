@@ -51,10 +51,10 @@
     --info-foreground: 0 0% 100%;
     --info-light: 199 89% 95%;
 
-    /* Holiday/blocked state */
-    --holiday: 280 65% 60%;
+    /* Holiday/blocked state — vermelho, para se destacar bem do dia comum */
+    --holiday: 350 78% 50%;
     --holiday-foreground: 0 0% 100%;
-    --holiday-light: 280 65% 95%;
+    --holiday-light: 350 78% 93%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;

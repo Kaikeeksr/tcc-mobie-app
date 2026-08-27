@@ -1,17 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { 
-  ClipboardCheck, 
+import {
+  ClipboardCheck,
   Calendar as CalendarIcon,
   Check,
   X,
-  Save,
   Users,
-  PartyPopper
+  PartyPopper,
+  Car,
+  Lock,
+  Ban,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -27,124 +29,169 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { turmaService, chamadaService, calendarService } from '@/services/mockService';
-import { AttendanceRecord, AttendanceStatus, Turma, Student } from '@/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { turmaApi, attendanceApi, calendarApi, guardianStudentApi, guardianApi } from '@/services/api';
+import { AttendanceStatus, Chamada as ChamadaType, Guardian, SessionType, Turma } from '@/types';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { hapticSelecao, hapticSucesso } from '@/lib/haptics';
 
+const STATUS_LABEL: Record<AttendanceStatus, string> = {
+  Present: 'Presente',
+  Absent: 'Falta',
+  Late: 'Atrasado',
+  PickedUpByGuardian: 'Retirado',
+  Justified: 'Justificado',
+};
+
+const STATUS_BADGE_CLASS: Record<AttendanceStatus, string> = {
+  Present: 'bg-success/20 text-success border-success/30',
+  Absent: 'bg-danger/20 text-danger border-danger/30',
+  Late: 'bg-warning/20 text-warning border-warning/30',
+  PickedUpByGuardian: 'bg-info/20 text-info border-info/30',
+  Justified: 'bg-muted text-muted-foreground border-muted-foreground/30',
+};
+
+const SENTIDO_OPTIONS: { value: SessionType; label: string }[] = [
+  { value: 'ToSchool', label: 'Ida (casa → escola)' },
+  { value: 'FromSchool', label: 'Volta (escola → casa)' },
+];
+
 const Chamada = () => {
-  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const initialTurmaId = searchParams.get('turma') || '';
 
-  const [turmas] = useState<Turma[]>(turmaService.getAll());
+  const [turmas, setTurmas] = useState<Turma[]>([]);
   const [selectedTurmaId, setSelectedTurmaId] = useState(initialTurmaId);
+  const [sentido, setSentido] = useState<SessionType>('ToSchool');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [students, setStudents] = useState<Student[]>([]);
-  const [attendance, setAttendance] = useState<Map<string, AttendanceStatus>>(new Map());
-  const [existingChamadaId, setExistingChamadaId] = useState<string | null>(null);
+  const [chamada, setChamada] = useState<ChamadaType | null>(null);
   const [isHoliday, setIsHoliday] = useState(false);
-  const [holidayInfo, setHolidayInfo] = useState<string>('');
+  const [holidayInfo, setHolidayInfo] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
+  const [pickupStudent, setPickupStudent] = useState<{ id: string; nome: string } | null>(null);
 
   useEffect(() => {
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const holiday = calendarService.getHolidayInfo(dateStr);
-    setIsHoliday(!!holiday);
-    setHolidayInfo(holiday?.descricao || 'Feriado');
-  }, [selectedDate]);
+    turmaApi.list().then(setTurmas).catch(() => toast.error('Erro ao carregar turmas'));
+  }, []);
+
+  const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
   useEffect(() => {
+    // Fim de semana é não letivo por padrão, mesmo sem um registro no calendário.
+    const isWeekend = selectedDate.getDay() === 0 || selectedDate.getDay() === 6;
+
+    calendarApi
+      .list(dateStr, dateStr)
+      .then(days => {
+        const override = days.find(d => d.date === dateStr);
+        const effectiveTipo = override?.tipo ?? (isWeekend ? 'FERIADO' : 'LETIVO');
+        setIsHoliday(effectiveTipo === 'FERIADO');
+        setHolidayInfo(override?.descricao || (isWeekend ? 'Fim de semana' : 'Feriado'));
+      })
+      .catch(() => {
+        setIsHoliday(isWeekend);
+        setHolidayInfo('Fim de semana');
+      });
+  }, [dateStr, selectedDate]);
+
+  const loadChamada = useCallback(async () => {
     if (!selectedTurmaId) {
-      setStudents([]);
-      setAttendance(new Map());
-      setExistingChamadaId(null);
+      setChamada(null);
       return;
     }
-
-    const turmaStudents = turmaService.getStudents(selectedTurmaId);
-    setStudents(turmaStudents);
-
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const existingChamada = chamadaService.getByTurmaAndDate(selectedTurmaId, dateStr);
-
-    if (existingChamada) {
-      setExistingChamadaId(existingChamada.id);
-      const attendanceMap = new Map<string, AttendanceStatus>();
-      existingChamada.registros.forEach(r => {
-        attendanceMap.set(r.alunoId, r.status);
-      });
-      setAttendance(attendanceMap);
-    } else {
-      setExistingChamadaId(null);
-      const attendanceMap = new Map<string, AttendanceStatus>();
-      turmaStudents.forEach(s => {
-        attendanceMap.set(s.id, 'FALTA');
-      });
-      setAttendance(attendanceMap);
+    setIsLoading(true);
+    try {
+      const existing = await attendanceApi.getByDate(selectedTurmaId, dateStr, sentido);
+      setChamada(existing);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao carregar chamada');
+    } finally {
+      setIsLoading(false);
     }
-  }, [selectedTurmaId, selectedDate]);
+  }, [selectedTurmaId, dateStr, sentido]);
 
-  const handleAttendanceChange = (studentId: string, status: AttendanceStatus) => {
+  useEffect(() => {
+    void loadChamada();
+  }, [loadChamada]);
+
+  const handleOpen = async () => {
+    if (!selectedTurmaId) return;
+    setIsOpening(true);
+    try {
+      const opened = await attendanceApi.open(selectedTurmaId, { sentido, data: dateStr });
+      setChamada(opened);
+      toast.success('Chamada aberta! Todos começam como presentes — ajuste quem faltou.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao abrir chamada');
+    } finally {
+      setIsOpening(false);
+    }
+  };
+
+  const handleStatusChange = async (studentId: string, status: AttendanceStatus) => {
+    if (!chamada) return;
     void hapticSelecao();
-    setAttendance(prev => {
-      const newMap = new Map(prev);
-      newMap.set(studentId, status);
-      return newMap;
+
+    // Otimista: atualiza a tela antes da resposta do servidor.
+    setChamada({
+      ...chamada,
+      registros: chamada.registros.map(r => (r.alunoId === studentId ? { ...r, status } : r)),
     });
-  };
 
-  const toggleAllPresent = () => {
-    const allPresent = students.every(s => attendance.get(s.id) === 'PRESENTE');
-    const newStatus: AttendanceStatus = allPresent ? 'FALTA' : 'PRESENTE';
-    
-    const newMap = new Map<string, AttendanceStatus>();
-    students.forEach(s => {
-      newMap.set(s.id, newStatus);
-    });
-    setAttendance(newMap);
-  };
-
-  const handleSave = () => {
-    if (!selectedTurmaId || !user) return;
-
-    const registros: AttendanceRecord[] = Array.from(attendance.entries()).map(
-      ([alunoId, status]) => ({ alunoId, status })
-    );
-
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-
-    if (existingChamadaId) {
-      chamadaService.update(existingChamadaId, registros);
-      toast.success('Chamada atualizada com sucesso!');
-    } else {
-      chamadaService.create(selectedTurmaId, dateStr, registros, user.id);
-      toast.success('Chamada salva com sucesso!');
+    try {
+      await attendanceApi.markRecords(chamada.id, [{ alunoId: studentId, status }]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao marcar presença');
+      await loadChamada();
     }
-    void hapticSucesso();
+  };
 
-    const newChamada = chamadaService.getByTurmaAndDate(selectedTurmaId, dateStr);
-    if (newChamada) {
-      setExistingChamadaId(newChamada.id);
+  const handleClose = async () => {
+    if (!chamada) return;
+    try {
+      await attendanceApi.close(chamada.id);
+      toast.success('Chamada fechada!');
+      void hapticSucesso();
+      await loadChamada();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao fechar chamada');
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!chamada) return;
+    try {
+      await attendanceApi.cancel(chamada.id);
+      toast.success('Chamada cancelada');
+      await loadChamada();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao cancelar chamada');
     }
   };
 
   const selectedTurma = turmas.find(t => t.id === selectedTurmaId);
-  const presentCount = Array.from(attendance.values()).filter(s => s === 'PRESENTE').length;
-  const absentCount = Array.from(attendance.values()).filter(s => s === 'FALTA').length;
+  const presentCount = chamada?.registros.filter(r => r.status === 'Present').length ?? 0;
+  const absentCount = chamada?.registros.filter(r => r.status === 'Absent').length ?? 0;
+  const isOpen = chamada?.status === 'Open';
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
-      {/* Header */}
       <div>
-        {/* No celular o titulo ja vem no cabecalho fixo do Layout. */}
         <h1 className="hidden lg:block text-2xl lg:text-3xl font-bold">Chamada</h1>
         <p className="text-muted-foreground">Registre a presença dos alunos</p>
       </div>
 
-      {/* Selection Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <Card>
           <CardHeader className="pb-3 p-3 sm:p-6 sm:pb-3">
             <CardTitle className="text-base font-medium">Turma</CardTitle>
@@ -167,6 +214,24 @@ const Chamada = () => {
 
         <Card>
           <CardHeader className="pb-3 p-3 sm:p-6 sm:pb-3">
+            <CardTitle className="text-base font-medium">Sentido</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+            <Select value={sentido} onValueChange={(v: SessionType) => setSentido(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SENTIDO_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3 p-3 sm:p-6 sm:pb-3">
             <CardTitle className="text-base font-medium">Data</CardTitle>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
@@ -174,14 +239,11 @@ const Chamada = () => {
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !selectedDate && "text-muted-foreground"
-                  )}
+                  className="w-full justify-start text-left font-normal"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
                   <span className="truncate">
-                    {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
                   </span>
                 </Button>
               </PopoverTrigger>
@@ -199,7 +261,6 @@ const Chamada = () => {
         </Card>
       </div>
 
-      {/* Holiday Warning */}
       {isHoliday && selectedTurmaId && (
         <Card className="border-holiday bg-holiday-light">
           <CardContent className="flex items-center gap-3 p-3 sm:p-4">
@@ -218,24 +279,39 @@ const Chamada = () => {
         </Card>
       )}
 
-      {/* Attendance List */}
-      {selectedTurmaId && !isHoliday && (
+      {selectedTurmaId && !isHoliday && isLoading && (
+        <p className="text-center text-muted-foreground py-8">Carregando...</p>
+      )}
+
+      {selectedTurmaId && !isHoliday && !isLoading && !chamada && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
+            <ClipboardCheck className="w-12 h-12 text-muted-foreground" />
+            <p className="text-muted-foreground text-center text-sm">
+              Nenhuma chamada aberta para {selectedTurma?.nome} nesta data/sentido
+            </p>
+            <Button onClick={handleOpen} disabled={isOpening} className="gradient-primary">
+              {isOpening ? 'Abrindo...' : 'Abrir Chamada'}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedTurmaId && !isHoliday && !isLoading && chamada && (
         <Card>
           <CardHeader className="p-3 sm:p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <ClipboardCheck className="w-4 h-4 sm:w-5 sm:h-5" />
-                  {selectedTurma?.nome}
+                  {chamada.turmaNome}
                 </CardTitle>
-                <CardDescription className="mt-1">
+                <div className="mt-1 flex items-center gap-2 flex-wrap text-sm text-muted-foreground">
                   {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-                  {existingChamadaId && (
-                    <Badge variant="outline" className="ml-2 text-xs">
-                      Editando
-                    </Badge>
-                  )}
-                </CardDescription>
+                  <Badge variant="outline" className="text-xs">
+                    {chamada.status === 'Open' ? 'Aberta' : chamada.status === 'Closed' ? 'Fechada' : 'Cancelada'}
+                  </Badge>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Badge className="bg-success hover:bg-success">
@@ -250,85 +326,78 @@ const Chamada = () => {
             </div>
           </CardHeader>
           <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-            {students.length === 0 ? (
+            {chamada.registros.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                <p>Nenhum aluno nesta turma</p>
+                <p>Nenhum aluno matriculado nesta turma</p>
               </div>
             ) : (
-              <>
-                <div className="flex justify-end mb-3 sm:mb-4">
-                  <Button variant="outline" size="sm" onClick={toggleAllPresent} className="text-xs sm:text-sm">
-                    {students.every(s => attendance.get(s.id) === 'PRESENTE') 
-                      ? 'Todos como falta'
-                      : 'Todos como presente'}
-                  </Button>
-                </div>
-
-                <div className="space-y-2">
-                  {students.map((student) => {
-                    const status = attendance.get(student.id) || 'FALTA';
-                    const isPresent = status === 'PRESENTE';
-
-                    return (
-                      <div 
-                        key={student.id}
-                        className={cn(
-                          "flex items-center justify-between p-2 sm:p-3 rounded-lg transition-colors",
-                          isPresent ? "bg-success-light" : "bg-danger-light"
-                        )}
+              <div className="space-y-2">
+                {chamada.registros.map((registro) => (
+                  <div
+                    key={registro.alunoId}
+                    className={cn(
+                      'flex items-center justify-between p-2 sm:p-3 rounded-lg gap-2 border',
+                      STATUS_BADGE_CLASS[registro.status]
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium text-sm sm:text-base truncate block">{registro.alunoNome}</span>
+                      {registro.status === 'PickedUpByGuardian' && registro.retiradoPorNome && (
+                        <span className="text-xs text-muted-foreground">
+                          Retirado por {registro.retiradoPorNome}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Select
+                        value={registro.status}
+                        disabled={!isOpen}
+                        onValueChange={(v: AttendanceStatus) => {
+                          if (v !== 'PickedUpByGuardian') void handleStatusChange(registro.alunoId, v);
+                        }}
                       >
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                          <div className={cn(
-                            "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0",
-                            isPresent ? "bg-success/20" : "bg-danger/20"
-                          )}>
-                            <span className={cn(
-                              "text-sm font-medium",
-                              isPresent ? "text-success" : "text-danger"
-                            )}>
-                              {student.nome.charAt(0)}
-                            </span>
-                          </div>
-                          <span className="font-medium text-sm sm:text-base truncate">{student.nome}</span>
-                        </div>
-                        {/* 44px e o minimo do iOS HIG. Esta e a interacao central
-                            do app: motorista marcando aluno por aluno, uma mao so. */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <Button
-                            size="sm"
-                            variant={isPresent ? "default" : "outline"}
-                            aria-label={`Marcar ${student.nome} como presente`}
-                            className={cn(
-                              "h-11 w-11 p-0",
-                              isPresent && "bg-success hover:bg-success/90"
-                            )}
-                            onClick={() => handleAttendanceChange(student.id, 'PRESENTE')}
-                          >
-                            <Check className="w-5 h-5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={!isPresent ? "destructive" : "outline"}
-                            aria-label={`Marcar ${student.nome} como falta`}
-                            className="h-11 w-11 p-0"
-                            onClick={() => handleAttendanceChange(student.id, 'FALTA')}
-                          >
-                            <X className="w-5 h-5" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                        <SelectTrigger className="h-9 w-[130px] text-xs sm:text-sm">
+                          <SelectValue>{STATUS_LABEL[registro.status]}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Present">Presente</SelectItem>
+                          <SelectItem value="Absent">Falta</SelectItem>
+                          <SelectItem value="Late">Atrasado</SelectItem>
+                          <SelectItem value="Justified">Justificado</SelectItem>
+                          {registro.status === 'PickedUpByGuardian' && (
+                            <SelectItem value="PickedUpByGuardian">Retirado</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {isOpen && (
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-9 w-9"
+                          title="Retirado pelo responsável"
+                          onClick={() => setPickupStudent({ id: registro.alunoId, nome: registro.alunoNome })}
+                        >
+                          <Car className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-                <div className="flex justify-end mt-4 sm:mt-6">
-                  <Button onClick={handleSave} className="gradient-primary w-full sm:w-auto">
-                    <Save className="w-4 h-4 mr-2" />
-                    {existingChamadaId ? 'Atualizar Chamada' : 'Salvar Chamada'}
-                  </Button>
-                </div>
-              </>
+            {isOpen && chamada.registros.length > 0 && (
+              <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4 sm:mt-6">
+                <Button variant="outline" onClick={handleCancel} className="w-full sm:w-auto">
+                  <Ban className="w-4 h-4 mr-2" />
+                  Cancelar Chamada
+                </Button>
+                <Button onClick={handleClose} className="gradient-primary w-full sm:w-auto">
+                  <Lock className="w-4 h-4 mr-2" />
+                  Fechar Chamada
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -340,12 +409,122 @@ const Chamada = () => {
             <ClipboardCheck className="w-12 h-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">Selecione uma turma</h3>
             <p className="text-muted-foreground text-center text-sm">
-              Escolha uma turma e uma data para realizar a chamada
+              Escolha uma turma, sentido e data para realizar a chamada
             </p>
           </CardContent>
         </Card>
       )}
+
+      {pickupStudent && chamada && (
+        <PickupDialog
+          sessionId={chamada.id}
+          student={pickupStudent}
+          onClose={() => setPickupStudent(null)}
+          onDone={() => {
+            setPickupStudent(null);
+            void loadChamada();
+          }}
+        />
+      )}
     </div>
+  );
+};
+
+/** Escolhe qual responsável (entre os que podem retirar) buscou o aluno na escola. */
+const PickupDialog = ({
+  sessionId,
+  student,
+  onClose,
+  onDone,
+}: {
+  sessionId: string;
+  student: { id: string; nome: string };
+  onClose: () => void;
+  onDone: () => void;
+}) => {
+  const [guardians, setGuardians] = useState<Guardian[]>([]);
+  const [selectedGuardianId, setSelectedGuardianId] = useState('');
+  const [justificativa, setJustificativa] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [links, allGuardians] = await Promise.all([
+          guardianStudentApi.listByStudent(student.id),
+          guardianApi.list(),
+        ]);
+        const allowedIds = new Set(links.filter(l => l.active && l.canPickup).map(l => l.guardianId));
+        setGuardians(allGuardians.filter(g => allowedIds.has(g.id)));
+      } catch {
+        toast.error('Erro ao carregar responsáveis');
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [student.id]);
+
+  const handleConfirm = async () => {
+    if (!selectedGuardianId) {
+      toast.error('Selecione o responsável que retirou o aluno');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await attendanceApi.pickup(sessionId, student.id, selectedGuardianId, justificativa);
+      toast.success('Retirada registrada — não conta como falta.');
+      onDone();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao registrar retirada');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Retirado pelo responsável</DialogTitle>
+          <DialogDescription>
+            {student.nome} foi buscado na escola antes da van chegar. Isso não conta como falta.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Carregando responsáveis...</p>
+          ) : guardians.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum responsável deste aluno está autorizado a retirá-lo. Ajuste a permissão em Alunos.
+            </p>
+          ) : (
+            <Select value={selectedGuardianId} onValueChange={setSelectedGuardianId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Quem retirou?" />
+              </SelectTrigger>
+              <SelectContent>
+                {guardians.map(g => (
+                  <SelectItem key={g.id} value={g.id}>{g.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Textarea
+            placeholder="Observação (opcional)"
+            value={justificativa}
+            onChange={(e) => setJustificativa(e.target.value)}
+            rows={2}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={handleConfirm} disabled={isSaving || guardians.length === 0}>
+            Confirmar retirada
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

@@ -1,18 +1,16 @@
-import React, { useState } from 'react';
-import { 
-  Plus, 
-  Search, 
-  MoreVertical, 
-  Pencil, 
-  Trash2, 
-  Users,
+import React, { useEffect, useState } from 'react';
+import {
+  Plus,
+  Search,
+  MoreVertical,
+  Pencil,
+  Trash2,
   BookOpen
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -37,34 +35,57 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { turmaService } from '@/services/mockService';
+import { turmaApi, studentApi, fetchActiveEnrollments } from '@/services/api';
 import { Turma } from '@/types';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
 const Turmas = () => {
-  const { user } = useAuth();
-  const [turmas, setTurmas] = useState<Turma[]>(turmaService.getAll());
+  const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [studentCounts, setStudentCounts] = useState<Record<string, number>>({});
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingTurma, setEditingTurma] = useState<Turma | null>(null);
   const [deletingTurma, setDeletingTurma] = useState<Turma | null>(null);
-  const [formData, setFormData] = useState({ nome: '', descricao: '' });
+  const [formData, setFormData] = useState({ nome: '', turno: '' });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const loadTurmas = async () => {
+    setIsLoading(true);
+    try {
+      const [list, students] = await Promise.all([turmaApi.list(), studentApi.list()]);
+      setTurmas(list);
+
+      const enrollments = await fetchActiveEnrollments(students);
+      const counts: Record<string, number> = {};
+      for (const turma of list) {
+        counts[turma.id] = enrollments.filter(e => e.transportGroupId === turma.id).length;
+      }
+      setStudentCounts(counts);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao carregar turmas');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadTurmas();
+  }, []);
 
   const filteredTurmas = turmas.filter(turma =>
-    turma.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    turma.descricao.toLowerCase().includes(searchTerm.toLowerCase())
+    turma.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleOpenDialog = (turma?: Turma) => {
     if (turma) {
       setEditingTurma(turma);
-      setFormData({ nome: turma.nome, descricao: turma.descricao });
+      setFormData({ nome: turma.nome, turno: turma.turno || '' });
     } else {
       setEditingTurma(null);
-      setFormData({ nome: '', descricao: '' });
+      setFormData({ nome: '', turno: '' });
     }
     setIsDialogOpen(true);
   };
@@ -72,37 +93,44 @@ const Turmas = () => {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingTurma(null);
-    setFormData({ nome: '', descricao: '' });
+    setFormData({ nome: '', turno: '' });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.nome.trim()) {
       toast.error('Nome da turma é obrigatório');
       return;
     }
 
-    if (editingTurma) {
-      turmaService.update(editingTurma.id, formData);
-      toast.success('Turma atualizada com sucesso!');
-    } else {
-      turmaService.create({
-        ...formData,
-        criadoPor: user?.id || '',
-      });
-      toast.success('Turma criada com sucesso!');
+    setIsSaving(true);
+    try {
+      if (editingTurma) {
+        await turmaApi.update(editingTurma.id, formData);
+        toast.success('Turma atualizada com sucesso!');
+      } else {
+        await turmaApi.create(formData);
+        toast.success('Turma criada com sucesso!');
+      }
+      await loadTurmas();
+      handleCloseDialog();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao salvar turma');
+    } finally {
+      setIsSaving(false);
     }
-
-    setTurmas(turmaService.getAll());
-    handleCloseDialog();
   };
 
-  const handleDelete = () => {
-    if (deletingTurma) {
-      turmaService.delete(deletingTurma.id);
-      setTurmas(turmaService.getAll());
+  const handleDelete = async () => {
+    if (!deletingTurma) return;
+    try {
+      await turmaApi.delete(deletingTurma.id);
       toast.success('Turma removida com sucesso!');
+      await loadTurmas();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao remover turma');
+    } finally {
       setIsDeleteDialogOpen(false);
       setDeletingTurma(null);
     }
@@ -118,9 +146,8 @@ const Turmas = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          {/* No celular o titulo ja vem no cabecalho fixo do Layout. */}
           <h1 className="hidden lg:block text-2xl lg:text-3xl font-bold">Turmas</h1>
-          <p className="text-muted-foreground">Gerencie suas turmas e alunos</p>
+          <p className="text-muted-foreground">Gerencie os grupos de transporte</p>
         </div>
         <Button onClick={() => handleOpenDialog()} className="gradient-primary">
           <Plus className="w-4 h-4 mr-2" />
@@ -128,7 +155,6 @@ const Turmas = () => {
         </Button>
       </div>
 
-      {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
@@ -139,15 +165,16 @@ const Turmas = () => {
         />
       </div>
 
-      {/* Turmas Grid */}
-      {filteredTurmas.length === 0 ? (
+      {isLoading ? (
+        <p className="text-center text-muted-foreground py-12">Carregando...</p>
+      ) : filteredTurmas.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <BookOpen className="w-12 h-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">Nenhuma turma encontrada</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {searchTerm 
-                ? 'Tente buscar por outro termo' 
+              {searchTerm
+                ? 'Tente buscar por outro termo'
                 : 'Crie sua primeira turma para começar'}
             </p>
             {!searchTerm && (
@@ -166,9 +193,7 @@ const Turmas = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <CardTitle className="text-lg truncate">{turma.nome}</CardTitle>
-                    <CardDescription className="line-clamp-2 mt-1">
-                      {turma.descricao}
-                    </CardDescription>
+                    {turma.turno && <CardDescription className="mt-1">Turno: {turma.turno}</CardDescription>}
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -181,7 +206,7 @@ const Turmas = () => {
                         <Pencil className="w-4 h-4 mr-2" />
                         Editar
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => openDeleteDialog(turma)}
                         className="text-destructive focus:text-destructive"
                       >
@@ -194,10 +219,9 @@ const Turmas = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    <span className="text-sm">{turma.alunoIds.length} alunos</span>
-                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {studentCounts[turma.id] ?? 0} alunos
+                  </span>
                   <Button variant="outline" size="sm" asChild>
                     <Link to={`/profissional/turmas/${turma.id}`}>
                       Ver detalhes
@@ -210,7 +234,6 @@ const Turmas = () => {
         </div>
       )}
 
-      {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -218,8 +241,8 @@ const Turmas = () => {
               {editingTurma ? 'Editar Turma' : 'Nova Turma'}
             </DialogTitle>
             <DialogDescription>
-              {editingTurma 
-                ? 'Atualize as informações da turma' 
+              {editingTurma
+                ? 'Atualize as informações da turma'
                 : 'Preencha os dados para criar uma nova turma'}
             </DialogDescription>
           </DialogHeader>
@@ -229,20 +252,19 @@ const Turmas = () => {
                 <Label htmlFor="nome">Nome da Turma</Label>
                 <Input
                   id="nome"
-                  placeholder="Ex: Futebol Sub-12"
+                  placeholder="Ex: Rota A - Manhã"
                   value={formData.nome}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="descricao">Descrição</Label>
-                <Textarea
-                  id="descricao"
-                  placeholder="Descreva a turma..."
-                  value={formData.descricao}
-                  onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                  rows={3}
+                <Label htmlFor="turno">Turno (opcional)</Label>
+                <Input
+                  id="turno"
+                  placeholder="Ex: Manhã"
+                  value={formData.turno}
+                  onChange={(e) => setFormData({ ...formData, turno: e.target.value })}
                 />
               </div>
             </div>
@@ -250,7 +272,7 @@ const Turmas = () => {
               <Button type="button" variant="outline" onClick={handleCloseDialog}>
                 Cancelar
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={isSaving}>
                 {editingTurma ? 'Salvar' : 'Criar'}
               </Button>
             </DialogFooter>
@@ -258,19 +280,18 @@ const Turmas = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover a turma "{deletingTurma?.nome}"? 
-              Esta ação não pode ser desfeita e todos os dados associados serão perdidos.
+              Tem certeza que deseja remover a turma "{deletingTurma?.nome}"?
+              Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive hover:bg-destructive/90"
             >
