@@ -1,14 +1,14 @@
 # Gestão de Chamadas
 
-Frontend do TCC — sistema de controle de frequência para transporte escolar. Um mesmo app atende três perfis:
+Sistema de controle de frequência para transporte escolar. Um mesmo app atende três perfis:
 
 - **Profissional** (motorista) — cria turmas, cadastra alunos, faz a chamada, gerencia o calendário letivo e exporta relatórios em PDF.
 - **Responsável** — acompanha a frequência dos filhos, turma a turma.
 - **Aluno** — consulta a própria frequência e o histórico de presenças.
 
-Roda como site e como **app Android nativo** (mesmo código, empacotado com Capacitor).
+Roda como site e como **app Android nativo** — mesmo código, empacotado com Capacitor.
 
-> **Estado atual:** o app consome a API [`tcc-backend`](https://github.com/Kaikeeksr/tcc-backend). Não há dados mockados — `src/data/` está vazio e a antiga camada `mockService` foi substituída por `src/services/api.ts`. Sessão e token ficam gravados no dispositivo via `@capacitor/preferences`, sobrevivendo a recarregar a página e a fechar o app.
+> **Estado atual:** o app consome a API [`tcc-backend`](https://github.com/Kaikeeksr/tcc-backend). Não há dados mockados — `src/data/` está vazio e a antiga camada `mockService` deu lugar a `src/services/api.ts`. Sessão e token ficam gravados no dispositivo via `@capacitor/preferences`, sobrevivendo a recarregar a página e a fechar o app.
 
 ## Stack
 
@@ -31,7 +31,7 @@ A aplicação sobe em http://localhost:8080.
 
 ### Apontar para outra API
 
-A URL base vem de `VITE_API_URL`, com `http://localhost:5218` como padrão. Para apontar para outro ambiente, crie um `.env.local` (ignorado pelo git):
+A URL base vem de `VITE_API_URL`, com `http://localhost:5218` como padrão. Para outro ambiente, crie um `.env.local` (ignorado pelo git):
 
 ```
 VITE_API_URL=https://sua-api.exemplo.com
@@ -39,24 +39,24 @@ VITE_API_URL=https://sua-api.exemplo.com
 
 ### Primeiro acesso
 
-Não há contas de demonstração. O transportador se cadastra pela própria tela de registro (`/registro`), informando nome, e-mail, senha e CPF ou CNPJ — o cadastro devolve o token já autenticado. A partir daí ele cria veículos, escolas, grupos, alunos e responsáveis, e é o cadastro do responsável/aluno que gera o login desses perfis.
+Não há contas de demonstração. O transportador se cadastra pela própria tela de registro (`/registro`), informando nome, e-mail, senha e CPF ou CNPJ — o cadastro já devolve o token autenticado. A partir daí ele cria veículos, escolas, grupos, alunos e responsáveis, e é o cadastro do responsável/aluno que gera o login desses perfis.
 
 ## Scripts
 
-| Comando            | O que faz                                    |
+| Comando | O que faz |
 | ------------------ | -------------------------------------------- |
-| `bun dev`          | Servidor de desenvolvimento com HMR          |
-| `bun run build`    | Build de produção em `dist/`                 |
-| `bun run preview`  | Serve o build de produção localmente         |
-| `bun run typecheck`| Checagem de tipos (`tsc --noEmit`)           |
-| `bun run lint`     | ESLint                                       |
-| `bun run test`     | Testes com Vitest                            |
-| `bun run test:watch` | Vitest em modo watch                       |
-| `bun run cap:sync` | Build web + copia para o projeto nativo      |
+| `bun dev` | Servidor de desenvolvimento com HMR |
+| `bun run build` | Build de produção em `dist/` |
+| `bun run preview` | Serve o build de produção localmente |
+| `bun run typecheck` | Checagem de tipos (`tsc --noEmit`) |
+| `bun run lint` | ESLint |
+| `bun run test` | Testes com Vitest |
+| `bun run test:watch` | Vitest em modo watch |
+| `bun run cap:sync` | Build web + copia para o projeto nativo |
 | `bun run android:run` | Build, sync e instala no emulador/aparelho |
-| `bun run android:open` | Abre o projeto no Android Studio          |
+| `bun run android:open` | Abre o projeto no Android Studio |
 
-> **Use `bun run` para tudo que não seja `dev`.** `bun build` e `bun test` invocam o bundler e o test runner *embutidos* do Bun, ignorando o Vite e o `vitest.config.ts` — silenciosamente, sem erro.
+> **Use `bun run` para tudo que não seja `dev`.** `bun build` e `bun test` invocam o bundler e o test runner *embutidos* do Bun, ignorando o Vite e o `vitest.config.ts` — silenciosamente, sem erro nenhum.
 
 ## Como o app fala com a API
 
@@ -66,13 +66,13 @@ Toda requisição passa por `src/lib/apiClient.ts`, e só os módulos de `src/se
 - **Erro** — traduz o `ProblemDetails` (RFC 9457) do backend numa `ApiError` tipada, com `status` e `errorCode`, e extrai a primeira mensagem de validação de campo. As telas mostram `error.message`, sem conhecer o protocolo.
 - **401** — dispara o handler registrado pelo `AuthContext`, que encerra a sessão local. Token expirado não deixa o app num estado meio-logado.
 
-`src/services/api.ts` é a fronteira de tradução: converte os DTOs do backend (inglês, `snake_case`) para os tipos de domínio do app (português), e vice-versa. Uma mudança de contrato se resolve nesse arquivo.
+`src/services/api.ts` é a fronteira de tradução: converte os DTOs do backend (inglês, `snake_case`) para os tipos de domínio do app (português), e vice-versa. Mudança de contrato se resolve nesse arquivo e em nenhum outro.
 
 ## App Android
 
 O código é o mesmo do site: o Capacitor serve o `dist/` dentro de um WebView nativo.
 
-**Pré-requisitos:** JDK 17+ (21 recomendado), Android SDK com **API 36** e `ANDROID_HOME` definido. O caminho do SDK fica em `android/local.properties` (fora do git — cada máquina tem o seu).
+**Pré-requisitos:** JDK 17+ (21 recomendado), Android SDK com **API 36** e `ANDROID_HOME` definido. O caminho do SDK fica em `android/local.properties`, fora do git — cada máquina tem o seu.
 
 ```bash
 bun run android:run     # build + sync + instala
@@ -82,11 +82,11 @@ Depois de mexer no código web, `bun run cap:sync` copia o novo build para o pro
 
 O que muda em relação ao site:
 
-- **PDF** — na web baixa pelo navegador; no app grava o arquivo e abre a folha de compartilhamento. `doc.save()` do jsPDF falha silenciosamente dentro de um WebView, por isso o caminho nativo é separado (`src/utils/pdfExport.ts`).
+- **PDF** — na web baixa pelo navegador; no app o arquivo é gravado e a folha de compartilhamento é aberta. `doc.save()` do jsPDF falha silenciosamente dentro de um WebView, por isso o caminho nativo é separado em `src/utils/pdfExport.ts`.
 - **Sessão e dados** — gravados em `@capacitor/preferences`, para sobreviver quando o Android encerra o app em segundo plano.
 - **Botão voltar** — fecha o menu lateral antes de navegar (`src/hooks/useBackButton.ts`).
 
-> Ao gerar o APK de distribuição, use uma **keystore de release** — não a chave de debug. O arquivo `.jks` e sua senha não vão para o repositório.
+> Ao gerar o APK de distribuição, use uma **keystore de release** — não a chave de debug. Nem o `.jks` nem a senha vão para o repositório.
 
 ### iOS
 
@@ -116,11 +116,11 @@ src/
 └── utils/             # Exportação de PDF (jsPDF)
 ```
 
-O roteamento usa rotas aninhadas: `ProtectedRoute` valida o perfil e `Layout` desenha a moldura, ambos via `<Outlet/>` — as páginas não repetem essa estrutura. As telas de cada perfil são carregadas sob demanda (`lazy`), então um responsável não baixa o bundle do profissional.
+O roteamento é aninhado: `ProtectedRoute` valida o perfil e `Layout` desenha a moldura, ambos via `<Outlet/>` — assim as páginas não repetem essa estrutura. As telas de cada perfil são carregadas sob demanda (`lazy`), então um responsável não baixa o bundle do profissional.
 
-**Navegação** (`src/lib/navigation.ts` é a fonte única): no celular vira barra de abas inferior; no desktop, sidebar. Os destinos que não cabem nas abas vão para a folha "Mais". Perfis com um único destino não mostram abas.
+**Navegação:** `src/lib/navigation.ts` é a fonte única. No celular vira barra de abas inferior; no desktop, sidebar. Os destinos que não cabem nas abas vão para a folha "Mais", e perfis com um único destino não mostram abas.
 
-Os limiares de frequência (80% adequada, 60% atenção) vivem só em `src/lib/frequency.ts`; dashboards, relatórios e o PDF importam de lá.
+Os limiares de frequência (80% adequada, 60% atenção) vivem só em `src/lib/frequency.ts`; dashboards, relatórios e o PDF importam de lá, para não haver duas verdades.
 
 ## Telas
 
@@ -138,15 +138,17 @@ Os limiares de frequência (80% adequada, 60% atenção) vivem só em `src/lib/f
 
 ### A chamada, na prática
 
-Ao abrir a sessão, o backend já materializa uma linha por aluno matriculado **no estado presente**. O condutor só toca em quem faltou, atrasou ou foi retirado — num dia sem ocorrências, a chamada se conclui em duas interações. Em data não letiva (fim de semana, feriado cadastrado), a tela não oferece a abertura e informa o motivo.
+Ao abrir a sessão, o backend já materializa uma linha por aluno matriculado **no estado presente**. O condutor só toca em quem faltou, atrasou ou foi retirado — num dia sem ocorrências, a chamada se conclui em duas interações. A premissa é simples: quem está dirigindo uma van não pode gastar trinta toques numa tela. Em data não letiva (fim de semana, feriado cadastrado), a tela não oferece a abertura e informa o motivo.
 
-## Limitações conhecidas
+## O que ainda falta
 
-- Não há exportação em planilha (XLSX) — só PDF.
-- Sem comunicação em tempo real e sem notificação ativa ao responsável: é preciso abrir o app para ver o que aconteceu.
+- Exportação em planilha (XLSX) — hoje só PDF.
+- Comunicação em tempo real e notificação ativa ao responsável: é preciso abrir o app para ver o que aconteceu.
 - A suíte de testes automatizados ainda não cobre os fluxos das telas.
-- Sem funcionamento offline: em trecho sem cobertura de rede, a chamada não é registrada.
+- Funcionamento offline: em trecho sem cobertura de rede, a chamada não é registrada. É a limitação mais séria, dado o caso de uso.
 
-## Contexto acadêmico
+## Sobre
 
-Este repositório é o frontend do Trabalho de Conclusão de Curso em Engenharia de Software de Kaike Santos Rocha. A API que ele consome está em [`tcc-backend`](https://github.com/Kaikeeksr/tcc-backend).
+Frontend do Trabalho de Conclusão de Curso em Engenharia de Software. A API que ele consome está em [`tcc-backend`](https://github.com/Kaikeeksr/tcc-backend).
+
+**Kaike Santos Rocha** — [@Kaikeeksr](https://github.com/Kaikeeksr)
