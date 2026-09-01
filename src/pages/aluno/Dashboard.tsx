@@ -16,15 +16,16 @@ import {
 } from 'lucide-react';
 import { format, startOfYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getFrequencyColor, getFrequencyVariant } from '@/lib/frequency';
+import { getFrequencyColor } from '@/lib/frequency';
 import { cn } from '@/lib/utils';
+import type { BadgeProps } from '@/components/ui/badge';
 
-const STATUS_META: Record<AttendanceStatus, { label: string; icon: typeof Check }> = {
-  Present: { label: 'Presente', icon: Check },
-  Absent: { label: 'Falta', icon: X },
-  Late: { label: 'Atrasado', icon: Clock },
-  PickedUpByGuardian: { label: 'Retirado', icon: Car },
-  Justified: { label: 'Justificado', icon: FileText },
+const STATUS_META: Record<AttendanceStatus, { label: string; icon: typeof Check; variant: BadgeProps['variant'] }> = {
+  Present: { label: 'Presente', icon: Check, variant: 'success' },
+  Absent: { label: 'Falta', icon: X, variant: 'danger' },
+  Late: { label: 'Atrasado', icon: Clock, variant: 'warning' },
+  PickedUpByGuardian: { label: 'Retirado', icon: Car, variant: 'default' },
+  Justified: { label: 'Justificado', icon: FileText, variant: 'secondary' },
 };
 
 const AlunoDashboard = () => {
@@ -164,7 +165,7 @@ const AlunoDashboard = () => {
                 <span className="text-xs sm:text-sm truncate mr-2">
                   {format(new Date(registro.data + 'T12:00:00'), "dd/MM - EEEE", { locale: ptBR })} • {registro.sentido === 'ToSchool' ? 'Ida' : 'Volta'}
                 </span>
-                <Badge variant={getFrequencyVariant(registro.status === 'Absent' ? 0 : 100)} className="text-xs flex-shrink-0">
+                <Badge variant={meta.variant} className="text-xs flex-shrink-0">
                   <Icon className="w-3 h-3 mr-0.5" />
                   {meta.label}
                 </Badge>
