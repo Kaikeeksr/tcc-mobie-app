@@ -17,6 +17,8 @@ interface AuthContextType {
   /** Verdadeiro ate a sessao gravada terminar de ser lida no boot. */
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; message: string }>;
+  /** Usado após cadastro: já temos token + usuário, só falta persistir e popular o estado. */
+  setSession: (token: string, user: User) => Promise<void>;
   logout: () => void;
   isProfissional: boolean;
   isResponsavel: boolean;
@@ -68,11 +70,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     []
   );
 
+  const setSession = useCallback(async (token: string, loggedUser: User) => {
+    setAuthToken(token);
+    setUser(loggedUser);
+    await storage.set(SESSION_KEY, { token, user: loggedUser } satisfies StoredSession);
+  }, []);
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     isLoading,
     login,
+    setSession,
     logout,
     isProfissional: user?.tipoUsuario === 'PROFISSIONAL',
     isResponsavel: user?.tipoUsuario === 'RESPONSAVEL',

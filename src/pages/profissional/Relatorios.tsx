@@ -33,9 +33,11 @@ import { Turma, TurmaReport } from '@/types';
 import { cn } from '@/lib/utils';
 import { getFrequencyColor, getFrequencyBadgeClass } from '@/lib/frequency';
 import { exportTurmaPDF } from '@/utils/pdfExport';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 const Relatorios = () => {
+  const { user } = useAuth();
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [selectedTurmaId, setSelectedTurmaId] = useState<string>('all');
   const [from, setFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
@@ -73,7 +75,7 @@ const Relatorios = () => {
 
   const handleExportPDF = async (report: TurmaReport) => {
     try {
-      await exportTurmaPDF(report);
+      await exportTurmaPDF(report, user?.nome);
       toast.success('PDF exportado com sucesso!');
     } catch (erro) {
       console.error('Falha ao exportar PDF', erro);

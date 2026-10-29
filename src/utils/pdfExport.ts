@@ -40,7 +40,7 @@ const deliverPDF = async (doc: jsPDF, fileName: string) => {
   });
 };
 
-export const exportTurmaPDF = async (report: TurmaReport) => {
+export const exportTurmaPDF = async (report: TurmaReport, transportadorNome?: string) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -48,8 +48,7 @@ export const exportTurmaPDF = async (report: TurmaReport) => {
   const periodo = `${format(new Date(report.from + 'T12:00:00'), 'dd/MM/yyyy')} a ${format(new Date(report.to + 'T12:00:00'), 'dd/MM/yyyy')}`;
   const formattedDate = format(currentDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
 
-  // === FAKE LOGO ===
-  // Draw a simple logo placeholder (circle with initials)
+  // Logo placeholder (círculo com iniciais) — não há logo configurável no app ainda.
   doc.setFillColor(59, 130, 246); // Primary blue
   doc.circle(25, 25, 12, 'F');
   doc.setTextColor(255, 255, 255);
@@ -57,17 +56,16 @@ export const exportTurmaPDF = async (report: TurmaReport) => {
   doc.setFont('helvetica', 'bold');
   doc.text('GC', 25, 28, { align: 'center' });
 
-  // === FAKE HEADER ===
   doc.setTextColor(30, 41, 59); // Dark text
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.text('Gestão de Chamadas', 45, 22);
-  
+
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139); // Muted text
-  doc.text('Sistema de Controle de Frequência', 45, 28);
-  doc.text('CNPJ: 00.000.000/0001-00 | Tel: (11) 99999-9999', 45, 33);
+  // Sem CNPJ/telefone fixos: não há esse cadastro no app. Mostra quem gerou o relatório.
+  doc.text(transportadorNome ? `Transportador: ${transportadorNome}` : 'Sistema de Controle de Frequência', 45, 28);
 
   // Divider line
   doc.setDrawColor(226, 232, 240);
