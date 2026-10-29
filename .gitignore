@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Keystore de assinatura release — nunca vai pro repositorio.
+android/keystore.properties
+android/app/*.jks
+android/app/*.keystore
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '@/services/api';
-import { setAuthToken } from '@/lib/apiClient';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,12 +15,11 @@ import {
 } from '@/components/ui/select';
 import { Truck, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { storage } from '@/lib/storage';
 import { DOCUMENT_DIGIT_LENGTH, formatDocumentNumber, onlyDigits } from '@/lib/document';
 
-const SESSION_KEY = 'sessao.usuario';
-
 const Register = () => {
+  const { setSession } = useAuth();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -44,11 +43,9 @@ const Register = () => {
     setIsLoading(true);
     try {
       const { token, user } = await authApi.registerTransporter(form);
-      setAuthToken(token);
-      await storage.set(SESSION_KEY, { token, user });
+      await setSession(token, user);
       toast.success('Conta criada com sucesso!');
-      // Recarrega para o AuthProvider reler a sessão gravada e popular o estado.
-      window.location.assign('/');
+      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível concluir o cadastro');
       setIsLoading(false);
