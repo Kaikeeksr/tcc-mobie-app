@@ -7,6 +7,7 @@ import type {
   CalendarDay,
   DayType,
   Guardian,
+  GuardianConsentStatus,
   GuardianStudentLink,
   MeuFilho,
   RelationshipType,
@@ -186,6 +187,7 @@ interface StudentDto {
   grade?: string | null;
   school_id?: string | null;
   has_login: boolean;
+  guardian_consent_active: boolean;
 }
 
 const toStudent = (dto: StudentDto): Student => ({
@@ -195,6 +197,7 @@ const toStudent = (dto: StudentDto): Student => ({
   serie: dto.grade,
   escolaId: dto.school_id,
   temLogin: dto.has_login,
+  consentimentoResponsavelAtivo: dto.guardian_consent_active,
 });
 
 export const studentApi = {
@@ -605,4 +608,37 @@ export const meApi = {
 
   myAttendance: async (from: string, to: string): Promise<StudentAttendanceHistory> =>
     toHistory(await apiClient.get<StudentAttendanceHistoryDto>('/api/me/attendance', { from, to })),
+};
+
+interface GuardianConsentStatusDto {
+  student_id: string;
+  student_name: string;
+  active: boolean;
+  terms_version?: string | null;
+  granted_at_utc?: string | null;
+  revoked_at_utc?: string | null;
+}
+
+const toConsentStatus = (dto: GuardianConsentStatusDto): GuardianConsentStatus => ({
+  alunoId: dto.student_id,
+  alunoNome: dto.student_name,
+  ativo: dto.active,
+  versaoTermo: dto.terms_version,
+  concedidoEm: dto.granted_at_utc,
+  revogadoEm: dto.revoked_at_utc,
+});
+
+export const consentApi = {
+  list: async (): Promise<GuardianConsentStatus[]> =>
+    (await apiClient.get<GuardianConsentStatusDto[]>('/api/me/consents')).map(toConsentStatus),
+
+  grant: async (studentId: string, termsVersion: string): Promise<GuardianConsentStatus> =>
+    toConsentStatus(
+      await apiClient.post<GuardianConsentStatusDto>(`/api/me/children/${studentId}/consent`, {
+        terms_version: termsVersion,
+      })
+    ),
+
+  revoke: async (studentId: string): Promise<void> =>
+    apiClient.post(`/api/me/children/${studentId}/consent/revoke`),
 };

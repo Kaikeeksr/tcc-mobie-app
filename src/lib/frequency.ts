@@ -35,3 +35,10 @@ export const getFrequencyBadgeClass = (percentual: number) => {
   }
   return 'bg-danger-light text-danger border-danger/30';
 };
+
+/** Rótulo textual da faixa de frequência (usado na planilha e na legenda do PDF). */
+export const getFrequencyLabel = (percentual: number): 'Adequada' | 'Atenção' | 'Crítica' => {
+  if (percentual >= FREQUENCIA_ADEQUADA) return 'Adequada';
+  if (percentual >= FREQUENCIA_ATENCAO) return 'Atenção';
+  return 'Crítica';
+};
