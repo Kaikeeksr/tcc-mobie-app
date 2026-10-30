@@ -33,6 +33,7 @@ import { Turma, TurmaReport } from '@/types';
 import { cn } from '@/lib/utils';
 import { getFrequencyColor, getFrequencyBadgeClass } from '@/lib/frequency';
 import { exportTurmaPDF } from '@/utils/pdfExport';
+import { exportTurmaXLSX } from '@/utils/xlsxExport';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -83,6 +84,16 @@ const Relatorios = () => {
     }
   };
 
+  const handleExportXLSX = async (report: TurmaReport) => {
+    try {
+      await exportTurmaXLSX(report, user?.nome);
+      toast.success('Planilha exportada com sucesso!');
+    } catch (erro) {
+      console.error('Falha ao exportar planilha', erro);
+      toast.error('Erro ao exportar planilha');
+    }
+  };
+
   const generalStats = useMemo(() => {
     const totalAulas = reports.reduce((sum, r) => sum + r.totalAulas, 0);
     const totalAlunos = reports.reduce((sum, r) => sum + r.alunos.length, 0);
@@ -127,10 +138,16 @@ const Relatorios = () => {
             </Select>
           </div>
           {selectedTurmaId !== 'all' && turmaReport && (
-            <Button onClick={() => handleExportPDF(turmaReport)} className="col-span-2 sm:col-span-1 sm:w-auto self-end h-9">
-              <FileDown className="w-4 h-4 mr-2" />
-              Exportar PDF
-            </Button>
+            <div className="col-span-2 sm:col-span-1 flex gap-2 self-end">
+              <Button onClick={() => handleExportPDF(turmaReport)} className="flex-1 sm:w-auto h-9">
+                <FileDown className="w-4 h-4 mr-2" />
+                Exportar PDF
+              </Button>
+              <Button onClick={() => handleExportXLSX(turmaReport)} variant="outline" className="flex-1 sm:w-auto h-9">
+                <FileDown className="w-4 h-4 mr-2" />
+                Exportar planilha
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -263,7 +280,7 @@ const Relatorios = () => {
                               </span>
                             </div>
                           ))}
-                          <div className="flex justify-end pt-2">
+                          <div className="flex justify-end gap-2 pt-2">
                             <Button
                               variant="outline"
                               size="sm"
@@ -274,6 +291,17 @@ const Relatorios = () => {
                             >
                               <FileDown className="w-4 h-4 mr-2" />
                               Exportar PDF
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleExportXLSX(turma);
+                              }}
+                            >
+                              <FileDown className="w-4 h-4 mr-2" />
+                              Exportar planilha
                             </Button>
                           </div>
                         </div>

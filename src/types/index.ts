@@ -31,6 +31,7 @@ export interface Student {
   serie?: string | null;
   escolaId?: string | null;
   temLogin: boolean;
+  consentimentoResponsavelAtivo: boolean;
 }
 
 export interface Vehicle {
@@ -80,6 +81,16 @@ export interface MeuFilho {
   relationship: RelationshipType;
   isPrimary: boolean;
   canPickup: boolean;
+}
+
+/** Estado do consentimento LGPD de um filho (art. 14, §1º da Lei nº 13.709/2018). */
+export interface GuardianConsentStatus {
+  alunoId: string;
+  alunoNome: string;
+  ativo: boolean;
+  versaoTermo?: string | null;
+  concedidoEm?: string | null;
+  revogadoEm?: string | null;
 }
 
 // Calendar Types

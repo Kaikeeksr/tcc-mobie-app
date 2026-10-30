@@ -12,6 +12,7 @@ import {
   KeyRound,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -209,9 +210,16 @@ const Alunos = () => {
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-semibold text-sm sm:text-base truncate">{student.nome}</h3>
-                    {student.serie && (
-                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{student.serie}</p>
-                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {student.serie && (
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{student.serie}</p>
+                      )}
+                      {!student.consentimentoResponsavelAtivo && (
+                        <Badge variant="outline" className="text-xs bg-warning-light text-warning border-warning/30">
+                          Consentimento pendente
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">

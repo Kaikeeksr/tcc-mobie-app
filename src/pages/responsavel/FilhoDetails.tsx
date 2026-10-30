@@ -9,15 +9,19 @@ import {
   Clock,
   Car,
   FileText,
-  TrendingUp
+  TrendingUp,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { meApi } from '@/services/api';
-import { AttendanceStatus, StudentAttendanceHistory } from '@/types';
+import { meApi, consentApi } from '@/services/api';
+import { AttendanceStatus, GuardianConsentStatus, StudentAttendanceHistory } from '@/types';
 import { cn } from '@/lib/utils';
 import { getFrequencyColor } from '@/lib/frequency';
+import { ConsentDialog, TERMS_VERSION } from '@/components/ConsentDialog';
+import { toast } from 'sonner';
 
 const STATUS_META: Record<AttendanceStatus, { label: string; className: string; icon: typeof Check }> = {
   Present: { label: 'Presente', className: 'bg-success-light text-success', icon: Check },
@@ -31,19 +35,45 @@ const FilhoDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [history, setHistory] = useState<StudentAttendanceHistory | null>(null);
+  const [consent, setConsent] = useState<GuardianConsentStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [isConsentDialogOpen, setIsConsentDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     const from = format(startOfYear(new Date()), 'yyyy-MM-dd');
     const to = format(new Date(), 'yyyy-MM-dd');
-    meApi
-      .childAttendance(id, from, to)
-      .then(setHistory)
+    Promise.all([meApi.childAttendance(id, from, to), consentApi.list()])
+      .then(([historyResult, consents]) => {
+        setHistory(historyResult);
+        setConsent(consents.find((c) => c.alunoId === id) ?? null);
+      })
       .catch(() => setError(true))
       .finally(() => setIsLoading(false));
   }, [id]);
+
+  const handleGrantConsent = async () => {
+    if (!id) return;
+    try {
+      const updated = await consentApi.grant(id, TERMS_VERSION);
+      setConsent(updated);
+      toast.success('Consentimento concedido!');
+    } catch {
+      toast.error('Erro ao conceder consentimento');
+    }
+  };
+
+  const handleRevokeConsent = async () => {
+    if (!id) return;
+    try {
+      await consentApi.revoke(id);
+      setConsent((prev) => (prev ? { ...prev, ativo: false, revogadoEm: new Date().toISOString() } : prev));
+      toast.success('Consentimento revogado');
+    } catch {
+      toast.error('Erro ao revogar consentimento');
+    }
+  };
 
   if (isLoading) {
     return <p className="text-center text-muted-foreground py-12">Carregando...</p>;
@@ -71,6 +101,32 @@ const FilhoDetails = () => {
           <p className="text-muted-foreground text-sm">Detalhes de frequência</p>
         </div>
       </div>
+
+      <Card className={consent?.ativo ? undefined : 'border-warning/40 bg-warning-light'}>
+        <CardContent className="flex items-center justify-between gap-3 p-3 sm:p-4">
+          <div className="flex items-center gap-3 min-w-0">
+            {consent?.ativo ? (
+              <ShieldCheck className="w-5 h-5 text-success flex-shrink-0" />
+            ) : (
+              <ShieldAlert className="w-5 h-5 text-warning flex-shrink-0" />
+            )}
+            <p className="text-sm min-w-0">
+              {consent?.ativo && consent.concedidoEm
+                ? `Consentimento concedido em ${format(new Date(consent.concedidoEm), 'dd/MM/yyyy')}`
+                : 'Consentimento pendente para tratamento de dados'}
+            </p>
+          </div>
+          {consent?.ativo ? (
+            <Button variant="outline" size="sm" onClick={handleRevokeConsent} className="flex-shrink-0">
+              Revogar
+            </Button>
+          ) : (
+            <Button size="sm" onClick={() => setIsConsentDialogOpen(true)} className="flex-shrink-0">
+              Conceder
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-5">
         <Card>
@@ -184,6 +240,13 @@ const FilhoDetails = () => {
           )}
         </CardContent>
       </Card>
+
+      <ConsentDialog
+        open={isConsentDialogOpen}
+        onOpenChange={setIsConsentDialogOpen}
+        alunoNome={history.alunoNome}
+        onConfirm={handleGrantConsent}
+      />
     </div>
   );
 };
