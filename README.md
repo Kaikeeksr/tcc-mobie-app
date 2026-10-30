@@ -2,13 +2,13 @@
 
 Sistema de controle de frequência para transporte escolar. Um mesmo app atende três perfis:
 
-- **Profissional** (motorista) — cria turmas, cadastra alunos, faz a chamada, gerencia o calendário letivo e exporta relatórios em PDF.
-- **Responsável** — acompanha a frequência dos filhos, turma a turma.
+- **Profissional** (motorista) — cria turmas, cadastra alunos, faz a chamada, gerencia o calendário letivo e exporta relatórios em PDF e planilha (XLSX).
+- **Responsável** — acompanha a frequência dos filhos, turma a turma, e concede ou revoga o consentimento LGPD para o tratamento dos dados de cada filho.
 - **Aluno** — consulta a própria frequência e o histórico de presenças.
 
 Roda como site e como **app Android nativo** — mesmo código, empacotado com Capacitor.
 
-> **Estado atual:** o app consome a API [`tcc-backend`](https://github.com/Kaikeeksr/tcc-backend). Não há dados mockados — `src/data/` está vazio e a antiga camada `mockService` deu lugar a `src/services/api.ts`. Sessão e token ficam gravados no dispositivo via `@capacitor/preferences`, sobrevivendo a recarregar a página e a fechar o app.
+> **Estado atual:** app completo, em produção, consumindo a API [`tcc-backend`](https://github.com/Kaikeeksr/tcc-backend) sem nenhum dado mockado — `src/data/` está vazio e a antiga camada `mockService` deu lugar a `src/services/api.ts`. Sessão e token ficam gravados no dispositivo via `@capacitor/preferences`, sobrevivendo a recarregar a página e a fechar o app.
 
 ## Stack
 
@@ -132,20 +132,17 @@ Os limiares de frequência (80% adequada, 60% atenção) vivem só em `src/lib/f
 | Profissional | `/profissional/alunos` | Cadastro de alunos e vínculo com responsáveis |
 | Profissional | `/profissional/chamada` | Abre a chamada por grupo, sentido e data; marca exceções e registra retirada |
 | Profissional | `/profissional/calendario` | Feriados e recessos; a chamada consulta esse calendário |
-| Profissional | `/profissional/relatorios` | Frequência por período e por turma; exportação em PDF |
-| Responsável | `/responsavel`, `/filhos`, `/filhos/:id` | Frequência dos filhos e histórico dia a dia |
+| Profissional | `/profissional/relatorios` | Frequência por período e por turma; exportação em PDF e XLSX |
+| Responsável | `/responsavel`, `/filhos`, `/filhos/:id` | Frequência dos filhos, histórico dia a dia e consentimento LGPD |
 | Aluno | `/aluno` | Frequência própria e histórico recente |
 
 ### A chamada, na prática
 
 Ao abrir a sessão, o backend já materializa uma linha por aluno matriculado **no estado presente**. O condutor só toca em quem faltou, atrasou ou foi retirado — num dia sem ocorrências, a chamada se conclui em duas interações. A premissa é simples: quem está dirigindo uma van não pode gastar trinta toques numa tela. Em data não letiva (fim de semana, feriado cadastrado), a tela não oferece a abertura e informa o motivo.
 
-## O que ainda falta
+### Consentimento LGPD
 
-- Exportação em planilha (XLSX) — hoje só PDF.
-- Comunicação em tempo real e notificação ativa ao responsável: é preciso abrir o app para ver o que aconteceu.
-- A suíte de testes automatizados ainda não cobre os fluxos das telas.
-- Funcionamento offline: em trecho sem cobertura de rede, a chamada não é registrada. É a limitação mais séria, dado o caso de uso.
+No primeiro acesso de um responsável com filho pendente, `/responsavel/filhos` mostra o termo (finalidade, dados tratados, direito de revogar) e o botão "Concordo". A tela do filho mostra a data da concessão e o botão "Revogar"; revogar não apaga o histórico, só encerra o consentimento ativo. Enquanto não houver concessão, o transportador vê o selo "Consentimento pendente" na lista de alunos.
 
 ## Sobre
 
