@@ -148,11 +148,13 @@ export const exportTurmaPDF = async (report: TurmaReport, transportadorNome?: st
   doc.setLineWidth(0.5);
   doc.line(14, finalY + 15, pageWidth - 14, finalY + 15);
 
+  // Em linhas separadas: lado a lado, "Relatório gerado em: dd/mm/aaaa às hh:mm" sozinho
+  // já encosta no texto centralizado — não cabem na mesma linha de base.
   doc.setFontSize(8);
   doc.setTextColor(100, 116, 139);
-  doc.text(`Relatório gerado em: ${formattedDate}`, 14, finalY + 22);
-  doc.text('Sistema de Gestão de Chamadas - Todos os direitos reservados', pageWidth / 2, finalY + 22, { align: 'center' });
-  doc.text(`Página 1 de 1`, pageWidth - 14, finalY + 22, { align: 'right' });
+  doc.text('Sistema de Gestão de Chamadas - Todos os direitos reservados', pageWidth / 2, finalY + 21, { align: 'center' });
+  doc.text(`Relatório gerado em: ${formattedDate}`, 14, finalY + 27);
+  doc.text(`Página 1 de 1`, pageWidth - 14, finalY + 27, { align: 'right' });
 
   // === LEGEND ===
   doc.setFontSize(8);
@@ -162,7 +164,7 @@ export const exportTurmaPDF = async (report: TurmaReport, transportadorNome?: st
       `${FREQUENCIA_ATENCAO}-${FREQUENCIA_ADEQUADA - 1}% = Atenção | ` +
       `< ${FREQUENCIA_ATENCAO}% = Crítica`,
     14,
-    finalY + 30
+    finalY + 35
   );
 
   // Save file
